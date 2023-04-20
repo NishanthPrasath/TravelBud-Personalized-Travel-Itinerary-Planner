@@ -8,7 +8,6 @@ load_dotenv()
 
 def find_optimal_pairs(locations):
 
-    # Replace YOUR_API_KEY with your actual API key
     gmaps = googlemaps.Client(key= os.environ.get('GOOGLE_MAPS_API_KEY'))
 
     location_pairs = list(combinations(locations, 2))
@@ -31,7 +30,6 @@ def find_optimal_pairs(locations):
             visited_locations.add(pair[0])
             visited_locations.add(pair[1])
 
-    # Combine optimal pairs and left-out location, if any
     if len(locations) % 2 == 1:
         left_out_location = set(locations) - visited_locations
         if left_out_location:
