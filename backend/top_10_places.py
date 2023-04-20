@@ -7,7 +7,7 @@ load_dotenv()
 
 
 def get_top_attractions(city_name):
-    API_KEY = "AIzaSyCjCwxaUanCm9P-KFTSAZ6xCxFbdBHXLyw"
+    API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
 
     # define parameters for API request
