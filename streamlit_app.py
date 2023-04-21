@@ -126,7 +126,7 @@ def plan_my_trip_page():
     # Do something with user inputs here, such as search for flights/hotels that match their criteria
         st.write("Thank you for submitting your travel requirements!")
 
-def account():
+def my_account_page():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
 
@@ -134,7 +134,7 @@ def account():
     st.subheader('My Account')
     # st.sidebar.markdown("# Page 3 🎉")
 
-def analytics():
+def analytics_page():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
 
@@ -144,9 +144,9 @@ def analytics():
 
 page_names_to_funcs = {
     "Home": home_page,
-    "Account": account,
+    "Account": my_account_page,
     "Plan My Trip": plan_my_trip_page,
-    "Dashboard": analytics
+    "Dashboard": analytics_page
 }
 
 selected_page = st.sidebar.radio("Select a page", page_names_to_funcs.keys())
