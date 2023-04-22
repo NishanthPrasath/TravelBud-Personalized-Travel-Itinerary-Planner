@@ -6,13 +6,13 @@ load_dotenv()
 
 
 
-def get_top_attractions(city_name):
+def get_top_attractions(city_name, types):
     API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
 
     # define parameters for API request
     radius = "10000"  # in meters
-    types = 'tourist_attraction|amusement_park|park|point_of_interest|establishment'
+    # types = 'tourist_attraction|amusement_park|park|point_of_interest|establishment'
 
     # build API request URL
     url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={city_name}&radius={radius}&types={types}&key={API_KEY}"
@@ -30,4 +30,4 @@ def get_top_attractions(city_name):
     return attractions_lst
 
 
-get_top_attractions("New York City")
+# get_top_attractions("New York City")

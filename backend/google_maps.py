@@ -36,11 +36,114 @@ def find_optimal_pairs(locations):
             return (optimal_pairs, left_out_location.pop())
     return (optimal_pairs, None)
 
-locations = ['Boston Common MA', 'Seaport Boston', 'MFA', 'Flume New Hampshire', 'White Mountains New Hampshire']
-optimal_pairs, left_out_location = find_optimal_pairs(locations)
-print("Optimal pairs:")
-for pair, distance in optimal_pairs:
-    print(f"{pair[0]} and {pair[1]}: {distance} km")
-if left_out_location:
-    print(f"Left out location: {left_out_location}")
+# locations = ['Boston Common MA', 'Seaport Boston', 'MFA', 'Flume New Hampshire', 'White Mountains New Hampshire']
+# optimal_pairs, left_out_location = find_optimal_pairs(locations)
+# print("Optimal pairs:")
+# for pair, distance in optimal_pairs:
+#     print(f"{pair[0]} and {pair[1]}: {distance} km")
+# if left_out_location:
+#     print(f"Left out location: {left_out_location}")
 
+
+
+def get_place_types():
+    
+    # list of place type names based on the Google Places API documentation
+    return [
+        "accounting",
+        "airport",
+        "amusement_park",
+        "aquarium",
+        "art_gallery",
+        "atm",
+        "bakery",
+        "bank",
+        "bar",
+        "beauty_salon",
+        "bicycle_store",
+        "book_store",
+        "bowling_alley",
+        "bus_station",
+        "cafe",
+        "campground",
+        "car_dealer",
+        "car_rental",
+        "car_repair",
+        "car_wash",
+        "casino",
+        "cemetery",
+        "church",
+        "city_hall",
+        "clothing_store",
+        "convenience_store",
+        "courthouse",
+        "dentist",
+        "department_store",
+        "doctor",
+        "drugstore",
+        "electrician",
+        "electronics_store",
+        "embassy",
+        "fire_station",
+        "florist",
+        "funeral_home",
+        "furniture_store",
+        "gas_station",
+        "gym",
+        "hair_care",
+        "hardware_store",
+        "hindu_temple",
+        "home_goods_store",
+        "hospital",
+        "insurance_agency",
+        "jewelry_store",
+        "laundry",
+        "lawyer",
+        "library",
+        "light_rail_station",
+        "liquor_store",
+        "local_government_office",
+        "locksmith",
+        "lodging",
+        "meal_delivery",
+        "meal_takeaway",
+        "mosque",
+        "movie_rental",
+        "movie_theater",
+        "moving_company",
+        "museum",
+        "night_club",
+        "painter",
+        "park",
+        "parking",
+        "pet_store",
+        "pharmacy",
+        "physiotherapist",
+        "plumber",
+        "police",
+        "post_office",
+        "primary_school",
+        "real_estate_agency",
+        "restaurant",
+        "roofing_contractor",
+        "rv_park",
+        "school",
+        "secondary_school",
+        "shoe_store",
+        "shopping_mall",
+        "spa",
+        "stadium",
+        "storage",
+        "store",
+        "subway_station",
+        "supermarket",
+        "synagogue",
+        "taxi_stand",
+        "tourist_attraction",
+        "train_station",
+        "transit_station",
+        "travel_agency",
+        "university",
+        "veterinary_care",
+        "zoo"
+    ]
