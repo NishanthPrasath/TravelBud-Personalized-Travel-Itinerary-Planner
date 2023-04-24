@@ -33,9 +33,10 @@ def create_date_pairs(start_date, end_date, num_days):
         if pair_end_date > end_date:
             pair_end_date = end_date
         date_pairs.append((current_date.strftime('%Y-%m-%d'), pair_end_date.strftime('%Y-%m-%d')))
-        current_date += timedelta(days=num_days)
+        current_date += timedelta(days=1)  
 
-    return date_pairs
+    return date_pairs[:-num_days+1]  # remove the last pair if it's incomplete
+
 
 
 def get_hotel_cost(checkin_date, checkout_date, adults_number, type_des, id, rooms_cnt):
@@ -114,6 +115,85 @@ num_days = 3 #int
 adults_number = 6 # int
 num_rooms = '1' #str
 des_id, type_des= get_location_id("New York")
-hotel_costs = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
+df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
 
-print(hotel_costs)
+print(df_sorted)
+
+def get_flight_data(type_val, origin_val, destination_val, adults_number, start_date, end_date):
+
+    price_lst = []
+    airline_lst = []
+
+    url = "https://skyscanner44.p.rapidapi.com/search"
+
+    querystring = {"adults":adults_number ,"origin": origin_val,"destination": destination_val ,"departureDate": start_date,"returnDate": end_date ,"currency":"USD"}
+    headers = {
+        "content-type": "application/octet-stream",
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+        "X-RapidAPI-Host": "skyscanner44.p.rapidapi.com"
+    }
+
+    response = requests.get(url, headers=headers, params=querystring).json()
+
+
+
+    if 'itineraries' not in response:
+        return pd.DataFrame({'Airline': [], 'Price': [], 'Start Date': [start_date], 'End Date': [end_date]})
+
+    if type_val == 'Best':
+        type_val = 0
+
+    elif type_val == 'Cheapest':
+        type_val = 1
+
+    elif type_val == 'Fastest':
+        type_val = 2
+
+    elif type_val == 'Direct':
+        type_val = 3
+
+    else:
+        return 'Invalid type selected'
+
+    if len(response['itineraries']['buckets']) == 0:
+      return
+
+    for val in (response['itineraries']['buckets'][type_val]['items']):
+        price_lst.append(val['price']['formatted'])
+        airline_lst.append(val['legs'][1]['segments'][0]['operatingCarrier']['name'])
+
+
+    return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
+
+
+# example usage
+start_date = '2023-09-27'
+end_date = '2023-10-07'
+num_days = 3
+date_pairs = create_date_pairs(start_date, end_date, num_days)
+
+flight_data = pd.DataFrame()
+
+for pair in date_pairs:
+    result = get_flight_data('Best', 'BOS', 'JFK', '1', pair[0], pair[1])
+    flight_data = pd.concat([flight_data, result], ignore_index=True)
+    
+
+flight_data = flight_data.drop_duplicates()
+# convert price column to float type
+flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
+
+# group by start and end dates and get the row with lowest price for each group
+flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
+
+# reset index
+flight_data = flight_data.reset_index(drop=True)
+
+# output result as list of dictionaries
+result = flight_data.to_dict(orient='records')
+result = pd.DataFrame(result)
+
+merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
+merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
+merged_df.sort_values(by = 'Total_cost')
+print(merged_df)
