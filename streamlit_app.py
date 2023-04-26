@@ -20,7 +20,7 @@ st.set_page_config(page_title="TravelBud", page_icon=":earth_americas:")
 def get_top_attractions(destination, interests):
     
     data = {
-        "city": destination.split(" (")[0],
+        "city": destination,
         "types": interests
     }
 
@@ -35,7 +35,7 @@ def get_top_attractions(destination, interests):
 def find_optimal_pairs(selected_places):
 
     data = {
-            "locations": selected_places,
+            "locations": selected_places
         }
 
     res = requests.post(
@@ -45,6 +45,47 @@ def find_optimal_pairs(selected_places):
 
     if response["status_code"] == 200 or response["status_code"] == '200':
         st.write(response["data"])
+
+def get_location_id(destination):
+
+    url = "https://booking-com.p.rapidapi.com/v1/hotels/locations"
+
+    querystring = {"name": destination,"locale":"en-gb"}
+
+    headers = {
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+        "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
+    }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    response = response.json()
+    return response[1]['dest_id'], response[1]['dest_type']
+
+def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val, num_rooms_val, des_id, type_des, type_val, origin_val, destination_val, budget_val):
+
+    data = {
+        "start_date_val": start_date_val,
+        "end_date_val": end_date_val,
+        "num_days_val": num_days_val,
+        "adults_number_val": adults_number_val,
+        "num_rooms_val": num_rooms_val,
+        "des_id": des_id,
+        "type_des": type_des,
+        "type_val": type_val,
+        "origin_val": origin_val,
+        "destination_val": destination_val,
+        "budget_val": budget_val
+    }
+
+    res = requests.post(
+        'http://localhost:8000/GetFinalCost', json=data)
+    
+    response = res.json()
+
+    if response["status_code"] == 200 or response["status_code"] == '200':
+        return response
+
 
 
 # Helper function to format the selectbox options for places
@@ -187,6 +228,8 @@ def plan_my_trip_page():
     if num_people > 1:
         num_rooms = st.number_input('Enter the number of rooms', value=1, min_value=1)
 
+    type_val = st.radio("Select flight type",('Best', 'Cheapest', 'Fastest', 'Direct'))
+
     # Budget Slider
     budget = st.slider("Budget", min_value=0, max_value=10000, step=100)
 
@@ -195,7 +238,7 @@ def plan_my_trip_page():
 
     if destination != "Select":
 
-        res = get_top_attractions(destination, interests)
+        res = get_top_attractions(destination.split(" (")[0], interests)
 
         selected_places = st.multiselect('Select the places', res["data"])
         # Displaying the user's selection
@@ -209,6 +252,12 @@ def plan_my_trip_page():
 
         with st.spinner('Processing'):
             find_optimal_pairs(selected_places)
+
+            des_id, type_des= get_location_id(destination.split(" (")[0])
+
+            res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
+
+            st.write(res["data"])
 
 
 def my_account_page():
