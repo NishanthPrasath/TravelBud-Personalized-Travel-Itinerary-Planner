@@ -33,7 +33,7 @@ class DB:
         query = update(table).values({column: value}).where(whereColumn == whereValue)
         return self.runQuery(query)
     
-    def delete(self, table, column, value):
+    def deleteByValue(self, table, column, value):
         query = table.delete().where(column == value)
         return self.runQuery(query)
     
