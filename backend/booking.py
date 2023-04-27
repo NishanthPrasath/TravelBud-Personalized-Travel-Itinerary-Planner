@@ -18,7 +18,7 @@ def get_location_id(destination):
   querystring = {"name": destination,"locale":"en-gb"}
 
   headers = {
-    "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+    "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_HOTEL'),
     "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
   }
 
@@ -63,7 +63,7 @@ def get_hotel_cost(checkin_date, checkout_date, adults_number, type_des, id, roo
     }
 
     headers = {
-                "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+                "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_HOTEL'),
         "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
 
     }
@@ -112,14 +112,9 @@ def calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_de
         df_sorted = df.sort_values(by='price', ascending=True).reset_index(drop=True)
     return df_sorted
 
-
-# start_date = '2023-09-27'
-# end_date = '2023-10-07'
-# num_days = 3 #int
-# adults_number = 6 # int
-# num_rooms = '1' #str
-# des_id, type_des= get_location_id("New York")
-# df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
+#-------------------------------------------------------------------#
+## Flight Booking API
+#-------------------------------------------------------------------#
 
 
 def get_flight_data(type_val, origin_val, destination_val, adults_number, start_date, end_date):
@@ -132,7 +127,7 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
     querystring = {"adults":adults_number ,"origin": origin_val,"destination": destination_val ,"departureDate": start_date,"returnDate": end_date ,"currency":"USD"}
     headers = {
         "content-type": "application/octet-stream",
-        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_AIRLINE'),
         "X-RapidAPI-Host": "skyscanner44.p.rapidapi.com"
     }
 
@@ -141,7 +136,7 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
 
 
     if 'itineraries' not in response:
-        return pd.DataFrame({'Airline': [], 'Price': [], 'Start Date': [start_date], 'End Date': [end_date]})
+        return pd.DataFrame({'Airline': [], 'Price': [], 'Start Date': [], 'End Date': []})
 
     if type_val == 'Best':
         type_val = 0
@@ -169,37 +164,8 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
     return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
 
 
-# # example usage
-# start_date = '2023-09-27'
-# end_date = '2023-10-07'
-# num_days = 3
-# date_pairs = create_date_pairs(start_date, end_date, num_days)
 
-# flight_data = pd.DataFrame()
-
-# for pair in date_pairs:
-#     result = get_flight_data('Best', 'BOS', 'JFK', '1', pair[0], pair[1])
-#     flight_data = pd.concat([flight_data, result], ignore_index=True)
-    
-
-# flight_data = flight_data.drop_duplicates()
-# # convert price column to float type
-# flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
-
-# # group by start and end dates and get the row with lowest price for each group
-# flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
-
-# # reset index
-# flight_data = flight_data.reset_index(drop=True)
-
-# # output result as list of dictionaries
-# result = flight_data.to_dict(orient='records')
-# result = pd.DataFrame(result)
-
-# merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
-# merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
-# merged_df.sort_values(by = 'Total_cost')
-# print(merged_df)
+   
 
 
 def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val):
@@ -213,6 +179,7 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
     des_id, type_des= get_location_id(detination_name_val) #str
     df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
 
+
     # get flight data
     date_pairs = create_date_pairs(start_date, end_date, num_days)
     flight_data = pd.DataFrame()
@@ -220,9 +187,18 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
     for pair in date_pairs:
         result = get_flight_data(type_val, origin_val, destination_val, str(adults_number_val), pair[0], pair[1])
         flight_data = pd.concat([flight_data, result], ignore_index=True)
+
+    # check if flight data is empty
+    if flight_data.empty:
+        # return only the hotel data
+        return df_sorted.head(1)
+
+
+    
         
 
     flight_data = flight_data.drop_duplicates()
+    print(flight_data)
     # convert price column to float type
     flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
 
@@ -235,6 +211,9 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
     # output result as list of dictionaries
     result = flight_data.to_dict(orient='records')
     result = pd.DataFrame(result)
+
+
+    
 
     merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
     merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
@@ -249,6 +228,6 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
 
 
 # example usage
-df = get_final_cost('2023-09-27', '2023-10-07', 3, 1, '1', 'New York', 'Best', 'BOS', 'JFK', 1000)
+df = get_final_cost('2023-04-30', '2023-05-10', 2, 1, '1', 'Orlando', 'Best', 'JFK', 'ORL', 1000)
 print(df)
 
