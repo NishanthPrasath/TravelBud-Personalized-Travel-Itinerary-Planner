@@ -194,9 +194,6 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
         return df_sorted.head(1)
 
 
-    
-        
-
     flight_data = flight_data.drop_duplicates()
     print(flight_data)
     # convert price column to float type
@@ -228,6 +225,6 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
 
 
 # example usage
-df = get_final_cost('2023-04-30', '2023-05-10', 2, 1, '1', 'Orlando', 'Best', 'JFK', 'ORL', 1000)
+df = get_final_cost('2023-04-30', '2023-05-10', 2, 1, '1', 'New York', 'Best', 'BOS', 'JFK', 1000)
 print(df)
 

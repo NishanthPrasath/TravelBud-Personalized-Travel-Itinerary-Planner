@@ -36,6 +36,8 @@ load_dotenv()
 #             return (optimal_pairs, left_out_location.pop())
 #     return (optimal_pairs, None)
 
+
+
 def find_optimal_pairs(locations):
 
     gmaps = googlemaps.Client(key= os.environ.get('GOOGLE_MAPS_API_KEY'))
@@ -62,11 +64,8 @@ def find_optimal_pairs(locations):
 
     result_str = ""
     day = 1
-    for i in range(0, len(optimal_pairs), 2):
-        if i+1 < len(optimal_pairs):
-            result_str += f"Day {day}: {optimal_pairs[i][0][0]} and {optimal_pairs[i][0][1]}: {optimal_pairs[i][1]} km, {optimal_pairs[i+1][0][0]} and {optimal_pairs[i+1][0][1]}: {optimal_pairs[i+1][1]} km\n"
-        else:
-            result_str += f"Day {day}: {optimal_pairs[i][0][0]} and {optimal_pairs[i][0][1]}: {optimal_pairs[i][1]} km\n"
+    for pair, distance in optimal_pairs:
+        result_str += f"Day {day}: {pair[0]} and {pair[1]}: {distance} km\n"
         day += 1
 
     if left_out_locations:
@@ -74,10 +73,19 @@ def find_optimal_pairs(locations):
 
     return result_str
 
-# locations = ['Edge NY', 'Empire State NY', 'Brookline Bridge NY', 'Central Park NY', 'Statue of Liberty NY']
+
+
+
 locations = ['Wild Florida Airboats & Gator Park Florida', 'Edison & Ford Winter Estates Florida', 'The John and Mable Ringling Museum of Art Florida', 'The Dalí (Salvador Dalí Museum) Florida', "Universal's Islands of Adventure Florida"]
-optimal_pairs = find_optimal_pairs(locations)
-print(optimal_pairs)
+output = find_optimal_pairs(locations)
+print(output)
+
+
+
+# # locations = ['Edge NY', 'Empire State NY', 'Brookline Bridge NY', 'Central Park NY', 'Statue of Liberty NY']
+# locations = ['Wild Florida Airboats & Gator Park Florida', 'Edison & Ford Winter Estates Florida', 'The John and Mable Ringling Museum of Art Florida', 'The Dalí (Salvador Dalí Museum) Florida', "Universal's Islands of Adventure Florida"]
+# optimal_pairs = find_optimal_pairs(locations)
+# print(optimal_pairs)
 # print("Optimal pairs:")
 # for pair, distance in optimal_pairs:
 #     print(f"{pair[0]} and {pair[1]}: {distance} km")
