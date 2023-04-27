@@ -307,14 +307,16 @@ def my_account_page():
 def analytics_page():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
-
+    with open('style.css') as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    
     st.markdown("# TravelBud")
     st.subheader('Dashboard')    
     # st.sidebar.markdown("# Page 3 🎉")
     st.sidebar.button("Logout")
     
     try:
-        fastapi_url="http://fastapi:8000/get_useract_data"
+        fastapi_url="http://localhost:8000/get_useract_data"
         response=requests.get(fastapi_url,headers=headers)
     except:
         print('user activity data not yet generated') 
@@ -332,17 +334,17 @@ def analytics_page():
         elif format=='week':
             return date_object.isocalendar()[1]
 
-    def user_act_data(timeframe):
+    def user_act_data():
         
-        if timeframe=="Hour":
-            last_date = datetime.strptime(user_data['date'].iloc[-1], '%Y-%m-%d %H:%M:%S.%f')
-            time_diff = datetime.utcnow() - last_date
-            if time_diff <= timedelta(hours=1):
-                api_hits=user_data['hit_count'].iloc[-1]
-                rem_limit=user_data['api_limit'].iloc[-1]-api_hits
-            else:
-                api_hits=0
-                rem_limit=user_data['api_limit'].iloc[-1]
+        
+        last_date = datetime.strptime(user_activity['time_stamp'].iloc[-1], '%Y-%m-%d %H:%M:%S.%f')
+        time_diff = datetime.utcnow() - last_date
+        if time_diff <= timedelta(days=30):
+            api_hits=user_activity['hit_count'].iloc[-1]
+            rem_limit=user_activity['api_limit'].iloc[-1]-api_hits
+        else:
+            api_hits=0
+            rem_limit=user_activity['api_limit'].iloc[-1]
                 
         return api_hits,rem_limit
 
@@ -351,21 +353,21 @@ def analytics_page():
         if timeframe=='Day':
             # print(user_data.columns)
             
-            daily_count = user_data.groupby(['date_str','api_name'],as_index=False).agg({'date': 'count'})
+            daily_count = user_activity.groupby(['date_str'],as_index=False).agg({'date': 'count'})
             daily_count = daily_count.reset_index()
             daily_count = daily_count.rename(columns={'date': 'API Hits'})
             # print('y')
             return daily_count
         
         elif timeframe=='Week':
-            week_count = user_data.groupby(['week','api_name']).agg({'date': 'count'})
+            week_count = user_activity.groupby(['week']).agg({'date': 'count'})
             # reset index and rename columns
             week_count = week_count.reset_index()
             week_count = week_count.rename(columns={'date': 'API Hits'})
             return week_count
         
         elif timeframe=='Month':
-            month_count = user_data.groupby(['month','api_name']).agg({'date': 'count'})
+            month_count = user_activity.groupby(['month']).agg({'date': 'count'})
             # reset index and rename columns
             month_count = month_count.reset_index()
             month_count = month_count.rename(columns={'date': 'API Hits'})
@@ -384,30 +386,44 @@ def analytics_page():
             data=data,
             x=x_axis,
             y=y_axis)
+    
+    
 
     try:
         if response.status_code==200:
             
-            user_data_json=response.json()
+            plan_json=response.json()['plan']
+            df_plan = pd.DataFrame(plan_json)
+            aoi_json=response.json()['aoi']
+            df_aoi = pd.DataFrame(aoi_json)
+            
+            user_data_json=response.json()['user_data']
+            user_data = pd.DataFrame(user_data_json)
+            
+            user_act_json=response.json()['user_activity']
             # print(user_data_json['data'])
-            user_data = pd.DataFrame(user_data_json['data'])
-            user_data['date_str']=user_data['date'].apply(convert_to_date,args=('date',))
-            user_data['hour']=user_data['date'].apply(convert_to_date,args=('hour',))
-            user_data['month']=user_data['date'].apply(convert_to_date,args=('month',)) 
-            user_data['week']=user_data['date'].apply(convert_to_date,args=('week',)) 
+            user_activity = pd.DataFrame(user_act_json)
+            user_activity['date_str']=user_activity['time_stamp'].apply(convert_to_date,args=('date',))
+            user_activity.merge(df_plan,on='UserID',how='left',inplace=True)
+            user_activity['hour']=user_activity['time_stamp'].apply(convert_to_date,args=('hour',))
+            user_activity['month']=user_activity['time_stamp'].apply(convert_to_date,args=('month',)) 
+            user_activity['week']=user_activity['time_stamp'].apply(convert_to_date,args=('week',))
+            
             
         else:
             st.error("You haven't yet used our application")
-            user_data=pd.DataFrame(columns=['username','service_plan','api_limit','date','api_name','hit_count','date_str','hour','month','week'])
-        
-        st.text('Your current plan - ' + str(user_data['service_plan'].iloc[-1]))
-
+            user_data=pd.DataFrame(columns=['UserID', 'Password', 'Name', 'Plan'])
+            user_activity=pd.DataFrame(columns=['UserID', 'Source', 'Destination', 'S_Date', 'E_Date', 'Duration', 'Budget', 'TotalPeople', 'PlacesToVisit', 'time_stamp','hit_count','date_str','api_limit','hour','month','week'])
+            df_plan=pd.DataFrame(columns=['plan_name', 'api_limit'])
+            df_aoi=pd.DataFrame(columns=['UserID', 'Interest'])
+            
+        st.text('Your current plan - ' + str(user_data['Plan'].iloc[-1]))
 
         api_hits=0
         rem_limit=0
         b1, b2 = st.columns(2)
-        b1.metric("API HITs", user_act_data('Hour')[0])
-        b2.metric("Remaining limit", user_act_data('Hour')[1])
+        b1.metric("API HITs", user_act_data()[0])
+        b2.metric("Remaining limit", user_act_data()[1])
 
         view_selection = st.radio("View by:",
                 options=["Day", "Week", "Month"],
