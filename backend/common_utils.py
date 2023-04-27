@@ -1,10 +1,11 @@
 import time
 import boto3
+import os
 
 clientlogs = boto3.client('logs',
 region_name= "us-east-1",
-aws_access_key_id=os.environ.get('AWS_LOG_ACCESS_KEY'),
-aws_secret_access_key=os.environ.get('AWS_LOG_SECRET_KEY'))
+aws_access_key_id=os.environ.get('AWS_ACCESS_KEY'),
+aws_secret_access_key=os.environ.get('AWS_SECRET_KEY'))
 
 def create_connection():
     
@@ -31,7 +32,7 @@ def write_logs(message):
     """
     
     clientlogs.put_log_events (
-    logGroupName="assignment_01",
+    logGroupName="FinalProject",
     logStreamName="app_logs",
     logEvents=[
         {
