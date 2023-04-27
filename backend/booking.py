@@ -8,6 +8,10 @@ import json
 
 load_dotenv()
 
+#-------------------------------------------------------------------#
+## Hotel Booking API
+#-------------------------------------------------------------------#
+
 def get_location_id(destination):
   url = "https://booking-com.p.rapidapi.com/v1/hotels/locations"
 
@@ -109,15 +113,14 @@ def calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_de
     return df_sorted
 
 
-start_date = '2023-09-27'
-end_date = '2023-10-07'
-num_days = 3 #int
-adults_number = 6 # int
-num_rooms = '1' #str
-des_id, type_des= get_location_id("New York")
-df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
+# start_date = '2023-09-27'
+# end_date = '2023-10-07'
+# num_days = 3 #int
+# adults_number = 6 # int
+# num_rooms = '1' #str
+# des_id, type_des= get_location_id("New York")
+# df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
 
-print(df_sorted)
 
 def get_flight_data(type_val, origin_val, destination_val, adults_number, start_date, end_date):
 
@@ -166,34 +169,86 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
     return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
 
 
-# example usage
-start_date = '2023-09-27'
-end_date = '2023-10-07'
-num_days = 3
-date_pairs = create_date_pairs(start_date, end_date, num_days)
+# # example usage
+# start_date = '2023-09-27'
+# end_date = '2023-10-07'
+# num_days = 3
+# date_pairs = create_date_pairs(start_date, end_date, num_days)
 
-flight_data = pd.DataFrame()
+# flight_data = pd.DataFrame()
 
-for pair in date_pairs:
-    result = get_flight_data('Best', 'BOS', 'JFK', '1', pair[0], pair[1])
-    flight_data = pd.concat([flight_data, result], ignore_index=True)
+# for pair in date_pairs:
+#     result = get_flight_data('Best', 'BOS', 'JFK', '1', pair[0], pair[1])
+#     flight_data = pd.concat([flight_data, result], ignore_index=True)
     
 
-flight_data = flight_data.drop_duplicates()
-# convert price column to float type
-flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
+# flight_data = flight_data.drop_duplicates()
+# # convert price column to float type
+# flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
 
-# group by start and end dates and get the row with lowest price for each group
-flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
+# # group by start and end dates and get the row with lowest price for each group
+# flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
 
-# reset index
-flight_data = flight_data.reset_index(drop=True)
+# # reset index
+# flight_data = flight_data.reset_index(drop=True)
 
-# output result as list of dictionaries
-result = flight_data.to_dict(orient='records')
-result = pd.DataFrame(result)
+# # output result as list of dictionaries
+# result = flight_data.to_dict(orient='records')
+# result = pd.DataFrame(result)
 
-merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
-merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
-merged_df.sort_values(by = 'Total_cost')
-print(merged_df)
+# merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
+# merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
+# merged_df.sort_values(by = 'Total_cost')
+# print(merged_df)
+
+
+def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val):
+
+    # get hotel data
+    start_date = start_date_val #str
+    end_date = end_date_val #str
+    num_days = num_days_val #int
+    adults_number = adults_number_val #int
+    num_rooms = num_rooms_val #str
+    des_id, type_des= get_location_id(detination_name_val) #str
+    df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, des_id, num_rooms)
+
+    # get flight data
+    date_pairs = create_date_pairs(start_date, end_date, num_days)
+    flight_data = pd.DataFrame()
+    
+    for pair in date_pairs:
+        result = get_flight_data(type_val, origin_val, destination_val, str(adults_number_val), pair[0], pair[1])
+        flight_data = pd.concat([flight_data, result], ignore_index=True)
+        
+
+    flight_data = flight_data.drop_duplicates()
+    # convert price column to float type
+    flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
+
+    # group by start and end dates and get the row with lowest price for each group
+    flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
+
+    # reset index
+    flight_data = flight_data.reset_index(drop=True)
+
+    # output result as list of dictionaries
+    result = flight_data.to_dict(orient='records')
+    result = pd.DataFrame(result)
+
+    merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
+    merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
+    merged_df.sort_values(by = 'Total_cost')
+
+    # get the lowest cost and if matches the budget, return the dataframe else return the first row with message stating that the budget is not enough but here is the best we can do
+    if merged_df['Total_cost'].min() <= budget_val:
+        return merged_df.loc[merged_df['Total_cost'].idxmin()]
+    else:
+        print('The budget is not enough but here is the best we can do')
+        return merged_df.head(1)
+
+
+# example usage
+df = get_final_cost('2023-09-27', '2023-10-07', 3, 1, '1', 'New York', 'Best', 'BOS', 'JFK', 1000)
+print(df)
+

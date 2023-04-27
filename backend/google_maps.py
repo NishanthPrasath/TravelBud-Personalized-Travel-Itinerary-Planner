@@ -36,13 +36,13 @@ def find_optimal_pairs(locations):
             return (optimal_pairs, left_out_location.pop())
     return (optimal_pairs, None)
 
-# locations = ['Boston Common MA', 'Seaport Boston', 'MFA', 'Flume New Hampshire', 'White Mountains New Hampshire']
-# optimal_pairs, left_out_location = find_optimal_pairs(locations)
-# print("Optimal pairs:")
-# for pair, distance in optimal_pairs:
-#     print(f"{pair[0]} and {pair[1]}: {distance} km")
-# if left_out_location:
-#     print(f"Left out location: {left_out_location}")
+locations = ['Edge NY', 'Empire State NY', 'Brookline Bridge NY', 'Central Park NY', 'Statue of Liberty NY']
+optimal_pairs, left_out_location = find_optimal_pairs(locations)
+print("Optimal pairs:")
+for pair, distance in optimal_pairs:
+    print(f"{pair[0]} and {pair[1]}: {distance} km")
+if left_out_location:
+    print(f"Left out location: {left_out_location}")
 
 
 

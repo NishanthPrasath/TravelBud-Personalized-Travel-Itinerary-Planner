@@ -3,6 +3,7 @@ import requests
 from backend import google_maps, top_10_places
 from dotenv import load_dotenv
 import os
+import airportsdata
 
 
 load_dotenv()
@@ -15,6 +16,81 @@ API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
 # Set page config
 st.set_page_config(page_title="TravelBud", page_icon=":earth_americas:")
+
+def get_top_attractions(destination, interests):
+    
+    data = {
+        "city": destination,
+        "types": interests
+    }
+
+    res = requests.post(
+        'http://localhost:8000/GetTopAttractions', json=data)
+    
+    response = res.json()
+
+    if response["status_code"] == 200 or response["status_code"] == '200':
+        return response
+
+def find_optimal_pairs(selected_places):
+
+    data = {
+            "locations": selected_places
+        }
+
+    res = requests.post(
+        'http://localhost:8000/FindOptimalPairs', json=data)
+                
+    response = res.json()
+
+    if response["status_code"] == 200 or response["status_code"] == '200':
+        st.write(response["data"])
+
+def get_location_id(destination):
+
+    url = "https://booking-com.p.rapidapi.com/v1/hotels/locations"
+
+    querystring = {"name": destination,"locale":"en-gb"}
+
+    headers = {
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+        "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
+    }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    response = response.json()
+    return response[1]['dest_id'], response[1]['dest_type']
+
+def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val, num_rooms_val, des_id, type_des, type_val, origin_val, destination_val, budget_val):
+
+    data = {
+        "start_date_val": start_date_val,
+        "end_date_val": end_date_val,
+        "num_days_val": num_days_val,
+        "adults_number_val": adults_number_val,
+        "num_rooms_val": num_rooms_val,
+        "des_id": des_id,
+        "type_des": type_des,
+        "type_val": type_val,
+        "origin_val": origin_val,
+        "destination_val": destination_val,
+        "budget_val": budget_val
+    }
+
+    res = requests.post(
+        'http://localhost:8000/GetFinalCost', json=data)
+    
+    response = res.json()
+
+    if response["status_code"] == 200 or response["status_code"] == '200':
+        return response
+
+
+
+# Helper function to format the selectbox options for places
+def format_select_option(pair):
+    return f"{pair[0]} ({pair[1]})"
 
 def login():
     # Set background image
@@ -46,24 +122,6 @@ def login():
                 st.success("Password reset link sent to email!")
             else:
                 st.error("Email address not found")
-
-# def forgot_password():
-#     # Set background image
-#     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
-
-#     st.subheader('Forgot Password')
-#     st.info("Enter your email address and we'll send you a link to reset your password")
-
-#     # Get user input
-#     email = st.text_input("Email")
-
-#     # Reset Password button
-#     if st.button("Reset Password"):
-#         # Check if email is valid
-#         if email == "example@example.com":
-#             st.success("Password reset link sent to email!")
-#         else:
-#             st.error("Email address not found")
 
 def signup():
     # Set background image
@@ -100,7 +158,6 @@ def signup():
     st.info(f"You have selected the {selected_plan} plan. With the {selected_plan} plan, you can make {plans[selected_plan]} requests")
 
 
-
     # Signup button
     if st.button("Create Account"):
         # Check if password matches
@@ -123,6 +180,7 @@ def home_page():
     elif choice == "Signup":
         signup()
 
+
 def plan_my_trip_page():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
@@ -132,11 +190,30 @@ def plan_my_trip_page():
     # st.sidebar.markdown("# Page 2 ❄️")
     st.sidebar.button("Logout")
 
-    # destination = st.text_input("Enter your destination")
+    # Loading airport data
+    airports = airportsdata.load('IATA')
 
-    # Available Destinations
-    destination_list = ["Paris", "New York", "Tokyo", "London", "Rome"]
-    destination = st.selectbox("Select your destination", destination_list)
+    # Extract city names and corresponding IATA codes
+    city_iata_pairs = [(data['city'], code) for code, data in airports.items()]
+
+    # Selectbox for city selection
+    source = st.selectbox("Select a source city", options=["Select"]+[format_select_option(p) for p in city_iata_pairs])
+
+    # if source != "Select":
+    # Remove the selected source city from destination options
+    destination_options = [format_select_option(p) for p in city_iata_pairs if p[0] != source.split(" (")[0]]
+    destination = st.selectbox("Select a destination city", options=["Select"]+destination_options)
+
+    # destination = st.selectbox("Select a destination city", options=[format_option(p) for p in city_iata_pairs])
+
+    if source != "Select" and destination != "Select":
+        # Extract the selected city and IATA code
+        # city, iata = source.split(" (")
+        source_iata = source.split(" (")[1][:-1]
+        # city, iata = destination.split(" (")
+        destination_iata = destination.split(" (")[1][:-1]    
+
+        # st.write(f" {source_iata} and {destination_iata}")
 
     # User Inputs
     start_date = st.date_input("Start Date")
@@ -145,40 +222,43 @@ def plan_my_trip_page():
     num_days = st.number_input('Enter the number of days for your trip', min_value=1, max_value=365, step=1)
     num_people = st.number_input("Enter the number of people", value=1, min_value=1)
 
-    # # Fetching Destinations from API
-    # if destination:
-    #     url = f"https://api.opentripmap.com/0.1/en/places/autocomplete?name={destination}&apikey=<YOUR_API_KEY>"
-    #     response = requests.get(url)
-    #     data = response.json()
-    #     destination_list = [city["name"] for city in data]
-    # else:
-    #     destination_list = []
+    # define default number of rooms
+    num_rooms = 1
 
-    # # Available Destinations
-    # destination = st.selectbox("Select your destination", destination_list)
+    if num_people > 1:
+        num_rooms = st.number_input('Enter the number of rooms', value=1, min_value=1)
+
+    type_val = st.radio("Select flight type",('Best', 'Cheapest', 'Fastest', 'Direct'))
 
     # Budget Slider
-    budget_min = 0
-    budget_max = 1000
-    flight_budget = st.slider("Flight Budget", min_value=budget_min, max_value=budget_max, step=100)
-    hotel_budget = st.slider("Hotel Budget", min_value=budget_min, max_value=budget_max, step=100)
+    budget = st.slider("Budget", min_value=0, max_value=10000, step=100)
 
-    types = 'tourist_attraction|amusement_park|park|point_of_interest|establishment'
-
-    attraction = top_10_places.get_top_attractions(destination, types)
-
-    selected_places = st.multiselect('Select the places', attraction)
-
-    # Display the user's selection
-    if selected_places:
-        st.info("You selected: " + ", ".join(selected_places))
+    interests = 'tourist_attraction|amusement_park|park|point_of_interest|establishment'
 
 
+    if destination != "Select":
 
-    # Button to Submit
+        res = get_top_attractions(destination.split(" (")[0], interests)
+
+        selected_places = st.multiselect('Select the places', res["data"])
+        # Displaying the user's selection
+        if selected_places:
+            st.info("You selected: " + ", ".join(selected_places))
+
+
     if st.button("Submit"):
-    # Do something with user inputs here, such as search for flights/hotels that match their criteria
+
         st.write("Thank you for submitting your travel requirements!")
+
+        with st.spinner('Processing'):
+            find_optimal_pairs(selected_places)
+
+            des_id, type_des= get_location_id(destination.split(" (")[0])
+
+            res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
+
+            st.write(res["data"])
+
 
 def my_account_page():
     # Set background image
