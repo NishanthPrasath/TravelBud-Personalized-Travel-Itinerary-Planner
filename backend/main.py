@@ -53,30 +53,38 @@ async def signup(user_data: schema.UserData):
         hashed_password = pwd_cxt.hash(user_data.Password)
         db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan}])
         data = {"message": "User created successfully", "status_code": "200"}
+        for interest in user_data.AOI:
+            db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
     else:
         data = {"message": "This email already exists", "status_code": "404"}
     return data
-    
-class top_attractions(BaseModel):
-    city: str
-    types: str
 
-class optimal_pairs(BaseModel):
-    locations: list
+@app.post('/forgot_password')
+async def forgot_password(user_data: schema.ForgotPassword):
+    userTable = db.getTable('User_Details')
+    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    if len(user) == 0:
+        data = {"message": "User not found", "status_code": "404"}
+    else:
+        pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        hashed_password = pwd_cxt.hash(user_data.Password)
+        db.updateRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password}])
+        data = {"message": "Password updated successfully", "status_code": "200"}
+    return data
 
-class final_cost(BaseModel):
-    start_date_val: str
-    end_date_val: str
-    num_days_val: int
-    adults_number_val: int
-    num_rooms_val: str
-    des_id: str
-    type_des: str
-    type_val: str
-    origin_val: str
-    destination_val: str
-    budget_val: int
-
+@app.post('/update_User')
+async def update_User(user_data: schema.UserData):
+    userTable = db.getTable('User_Details')
+    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    if len(user) == 0:
+        data = {"message": "User not found", "status_code": "404"}
+    else:
+        db.updateRow(userTable, [{'UserID': user_data.Username, 'Name': user_data.Name, 'Plan': user_data.Plan}])
+        db.deleteByValue(db.getTable('AOI'), 'UserID', user_data.Username)
+        for interest in user_data.AOI:
+            db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
+        data = {"message": "User updated successfully", "status_code": "200"}
+    return data
 
 def create_date_pairs(start_date, end_date, num_days):
     date_pairs = []
@@ -210,32 +218,8 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
 
     return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
 
-
-# @app.post('/login')
-# async def read_root(login_data: OAuth2PasswordRequestForm = Depends()):
-#     # try:
-#     database_file_name = "travel_app.db"
-#     database_file_path = os.path.join(project_dir, os.path.join('backend/',database_file_name))
-#     db = sqlite3.connect(database_file_path)
-#     user= pd.read_sql_query('SELECT * FROM Users where username="{}"'.format(login_data.username), db)
-#     if len(user) == 0:
-#         data = {"message": "User not found", "status_code": "404"}
-#     else:
-#         pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
-#         if pwd_cxt.verify(login_data.password, user['hashed_password'][0]):
-#             print("password verified")
-#             data = {'message': 'Username verified successfully', 'status_code': '200'}
-#             accessToken = access_token.create_access_token(data={"sub": str(user['username'][0])})
-#             data = {'message': "Success",'access_token':accessToken,'service_plan': user['service_plan'][0],'status_code': '200'}
-#         else:
-#             data = {'message': 'Password is incorrect','status_code': '401'}
-#     # except Exception as e:
-#     #     data = {'message': str(e),'status_code': '500'}
-#     return data
-
-
 @app.post('/GetTopAttractions')
-async def get_top_attractions(data: top_attractions):
+async def get_top_attractions(data: schema.top_attractions):
     API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
 
@@ -263,7 +247,7 @@ async def get_top_attractions(data: top_attractions):
 
 
 @app.post('/FindOptimalPairs')
-async def find_optimal_pairs(data: optimal_pairs):
+async def find_optimal_pairs(data: schema.optimal_pairs):
 
     gmaps = googlemaps.Client(key= os.environ.get('GOOGLE_MAPS_API_KEY'))
 
@@ -309,7 +293,7 @@ async def find_optimal_pairs(data: optimal_pairs):
 
 
 @app.post('/GetFinalCost')
-async def get_final_cost(data: final_cost):
+async def get_final_cost(data: schema.final_cost):
 
     # get hotel data
     start_date = data.start_date_val #str
