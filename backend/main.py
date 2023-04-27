@@ -349,25 +349,35 @@ async def get_final_cost(data: final_cost):
 
 @app.get("/get_useract_data")
 async def useract_data(getCurrentUser: TokenData = Depends(oauth2.get_current_user)):
-    config={'DB_USER_NAME':'postgres',
-        'DB_PASSWORD':'shubh',
-        'DB_ADDRESS':'localhost',
-        'DB_NAME':'final_project'}
-    engine=create_engine('postgresql://'+str(config.get('DB_USER_NAME'))+':'+str(config.get('DB_PASSWORD'))+'@'+str(config.get('DB_ADDRESS'))+':5432/'+str(config.get('DB_NAME')))
+    # config={'DB_USER_NAME':'postgres',
+    #     'DB_PASSWORD':'shubh',
+    #     'DB_ADDRESS':'localhost',
+    #     'DB_NAME':'final_project'}
+    engine=create_engine('postgresql://'+str(os.environ.get('DB_USER_NAME'))+':'+str(os.environ.get('DB_PASSWORD'))+'@'+str(os.environ.get('DB_ADDRESS'))+':5432/'+str(os.environ.get('DB_NAME')))
     connection = engine.connect()
     metadata = MetaData()
     try:
-        user_data = Table('user_data', metadata, autoload_with=engine)
-        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.AOI,user_data.c.Name,user_data.c.Plan)
+        user_data = Table('User_Details', metadata, autoload_with=engine)
+        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan)
         results = connection.execute(query).fetchall()
-        user_data=pd.DataFrame(results,columns=['UserID','Password','AOI','Name','Plan'])
+        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan'])
         df_user_data=user_data.to_dict(orient='records')
         user_activity = Table('user_activity', metadata, autoload_with=engine)
         query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.PlacesToVisit,user_activity.c.time_stamp)
         results = connection.execute(query).fetchall()
-        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','PlacesToVisit','time_stamp'])
+        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','PlacesToVisit','time_stamp','hit_count'])
         df_user_activity=user_activity.to_dict(orient='records')
-        return {'user_data':df_user_data,'user_activity':df_user_activity}
+        plan = Table('plan', metadata, autoload_with=engine)
+        query=select(plan.c.plan_name,plan.c.api_limit)
+        results = connection.execute(query).fetchall()
+        plan=pd.DataFrame(results,columns=['plan_name','api_limit'])
+        df_plan=plan.to_dict(orient='records')
+        aoi = Table('AOI', metadata, autoload_with=engine)
+        query=select(aoi.c.UserID,plan.c.Interest)
+        results = connection.execute(query).fetchall()
+        aoi=pd.DataFrame(results,columns=['UserID','Interest'])
+        df_aoi=plan.to_dict(orient='records')
+        return {'user_data':df_user_data,'user_activity':df_user_activity,'plan':df_plan,'aoi':df_aoi}
     except:
         return {'data':'No data found'}
     
@@ -377,3 +387,38 @@ async def get_username(getCurrentUser: TokenData = Depends(oauth2.get_current_us
     # print(getCurrentUser)
     
     return {'username': getCurrentUser.username}
+
+@app.post('/user_api_status')
+async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    # database_file_name = "assignment_01.db"
+    # database_file_path = os.path.join(project_dir, os.path.join('data/',database_file_name))
+    # db = sqlite3.connect(database_file_path)
+    cursor = db.cursor()
+    cursor.execute('''CREATE TABLE if not exists user_activity (username,service_plan,api_limit,date,api_name,hit_count)''')
+    cursor.execute('SELECT * FROM user_activity WHERE username =? ORDER BY date DESC LIMIT 1',(getCurrentUser.username,))
+    result = cursor.fetchone()
+    username=getCurrentUser.username
+    api_limit=pd.read_sql_query('Select api_limit from Users where username="{}"'.format(username),db).api_limit.item()
+    date = datetime.utcnow()
+    service_plan=pd.read_sql_query('Select service_plan from Users where username="{}"'.format(username),db).service_plan.item()
+    api_name=api_details.api_name 
+    if not result:
+        hit_count = 1
+        cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+        db.commit()
+    else:
+        last_date = datetime.strptime(result[3], '%Y-%m-%d %H:%M:%S.%f')
+        time_diff = datetime.utcnow() - last_date
+        if time_diff <= timedelta(hours=1):
+            if result[5]<api_limit:
+                hit_count = result[5] + 1
+                cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+                db.commit()
+            else:
+                db.commit()
+                db.close() 
+                return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+        else:
+            hit_count = 1
+            cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+            db.commit()
