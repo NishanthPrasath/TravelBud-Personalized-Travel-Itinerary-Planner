@@ -1,5 +1,3 @@
-# Final_Project
-
 # TravelBud
 
 ### Introduction
