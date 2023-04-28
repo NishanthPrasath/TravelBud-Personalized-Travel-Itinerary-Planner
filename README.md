@@ -39,6 +39,8 @@ In cases where the user's budget does not match their desired options, we recomm
 Overall, our optimization algorithms for location and booking ensure that Travel Bud users have the best possible vacation experience while also optimizing their time and budget.
 
 ### Architecture Diagram
+<img src="Architecture Diagram.png" alt="Architecture Diagram">
+
 
 
 [Codelab Link](url) <br>
