@@ -1,6 +1,6 @@
 
 import schema
-from fastapi import FastAPI,Depends
+from fastapi import FastAPI,Depends,Response,status
 import os
 import pandas as pd
 from passlib.context import CryptContext
@@ -406,14 +406,14 @@ async def useract_data():
     metadata = MetaData()
     try:
         user_data = Table('User_Details', metadata, autoload_with=engine)
-        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan)
+        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan,user_data.c.Hit_count_left,user_data.c.Updated_time)
         results = connection.execute(query).fetchall()
-        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan'])
+        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan','Hit_count_left','Updated_time'])
         df_user_data=user_data.to_dict(orient='records')
-        user_activity = Table('user_activity', metadata, autoload_with=engine)
-        query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.PlacesToVisit,user_activity.c.time_stamp)
+        user_activity = Table('User_Activity', metadata, autoload_with=engine)
+        query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.Time_stamp)
         results = connection.execute(query).fetchall()
-        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','PlacesToVisit','time_stamp','hit_count'])
+        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','Time_stamp'])
         df_user_activity=user_activity.to_dict(orient='records')
         plan = Table('plan', metadata, autoload_with=engine)
         query=select(plan.c.plan_name,plan.c.api_limit)
@@ -421,7 +421,7 @@ async def useract_data():
         plan=pd.DataFrame(results,columns=['plan_name','api_limit'])
         df_plan=plan.to_dict(orient='records')
         aoi = Table('AOI', metadata, autoload_with=engine)
-        query=select(aoi.c.UserID,plan.c.Interest)
+        query=select(aoi.c.UserID,aoi.c.Interest)
         results = connection.execute(query).fetchall()
         aoi=pd.DataFrame(results,columns=['UserID','Interest'])
         df_aoi=plan.to_dict(orient='records')
