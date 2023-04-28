@@ -1,6 +1,6 @@
 
 import schema
-from fastapi import FastAPI,Depends,Response,status
+from fastapi import FastAPI, Depends, UploadFile, File
 import os
 import pandas as pd
 from passlib.context import CryptContext
@@ -22,6 +22,9 @@ from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, 
 from sqlalchemy_utils import database_exists, create_database
 import oauth2
 from typing import Union
+from fpdf import FPDF
+import openai
+from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
 from datetime import datetime
 
 load_dotenv()
@@ -32,6 +35,22 @@ project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = FastAPI()
     
 db = database.DB()
+
+class MyPDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'TravelBud', 0, 1, 'C')
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, 'Page %s' % self.page_no(), 0, 0, 'C')
+
+    def create_page(self, text):
+        self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, text)
+        self.ln()
 
 @app.post('/login')
 async def login(login_data: OAuth2PasswordRequestForm = Depends()):
@@ -242,6 +261,113 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
 
     return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
 
+def translate_text(text, dest_lang):
+    if dest_lang == 'Spanish':
+        dest_lang = 'es_XX'
+    if dest_lang == 'Hindi':
+        dest_lang = 'hi_IN'
+
+    model = MBartForConditionalGeneration.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
+    tokenizer = MBart50TokenizerFast.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
+    tokenizer.src_lang = "en_XX"
+    tokenizer.tgt_lang = dest_lang
+    
+    # Split input text into smaller chunks of length less than or equal to 1024
+    chunk_size = 1024
+    text_chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+    # Translate each text chunk separately
+    translated_chunks = []
+    for chunk in text_chunks:
+        encoded_chunk = tokenizer(chunk, return_tensors="pt", truncation=True, max_length=1024)
+        generated_tokens = model.generate(
+            input_ids=encoded_chunk.input_ids,
+            attention_mask=encoded_chunk.attention_mask,
+            forced_bos_token_id=tokenizer.lang_code_to_id[dest_lang],
+            max_length=1024,
+            num_beams=4,
+            early_stopping=True,
+        )
+        translated_chunk = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
+        translated_chunks.append(translated_chunk)
+
+    # Concatenate the translated output of each chunk to obtain the final translated text
+    translated_text = ''.join(translated_chunks)
+    return translated_text
+  
+def create_itinerary(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing):
+    itinerary = """Create a detailed itinerary of 500 words for a user based on the following info don't deviate from the given Info start with customised greeting based on the user name and end with terms and conditions
+    Details:
+    - User Name: {User_name}
+    - Start Date: {start_date}
+    - End Date: {end_date}
+    - Number of Days: {num_days_val}
+    - Number of Adults: {adults_number_val}
+    - Number of Rooms: {num_rooms_val}
+    - Destination: {detination_name_val}
+    - Type: {type_val}
+    - Origin: {origin_val}
+    - Destination: {destination_val}
+    - Budget: {budget_val}
+
+    Hotel:
+    - Name: {hotel_name}
+    - Hotel Price: {price}
+
+    Flight:
+    - Airline: {airline}
+    - Airline Price: {flight_price}
+
+    Total Cost: {total_cost}
+
+    Locations:
+    {locations}
+
+    {pairing}
+    If there is any left-out location include it on the remaining days and add terms and conditions at the end""".format(User_name = User_name, start_date = start_date, end_date = end_date, num_days_val = num_days_val, adults_number_val = adults_number_val, num_rooms_val = num_rooms_val, detination_name_val = detination_name_val, type_val = type_val, origin_val = origin_val, destination_val = destination_val, budget_val = budget_val, hotel_name = hotel_name, price = price, airline = airline, flight_price = flight_price, total_cost = total_cost, locations = locations, pairing = pairing)
+
+    return itinerary
+
+def chat(inp, message_history, role="user"):
+
+    """Question to be asked to the chatgpt api
+    Args:
+        inp (str): Input from the user
+        message_history (list): Message history
+        role (str): Role of the user
+    Returns:
+        reply (str): Reply from the chatgpt api
+    """
+
+    # Append the input message to the message history
+    message_history.append({"role": role, "content": f"{inp}"})
+    openai.api_key = os.environ.get('OPENAI_API_KEY')
+
+
+    # Generate a chat response using the OpenAI API
+    completion = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=message_history,
+        temperature=0.15,
+    )
+
+    # Grab just the text from the API completion response
+    reply_content = completion.choices[0].message.content
+
+    # Append the generated response to the message history
+    message_history.append({"role": "assistant", "content": f"{reply_content}"})
+
+    # Return the generated response.
+    return reply_content
+
+def create_connection():
+    """Create a connection to S3 bucket
+    Returns:
+        s3client: S3 client object
+    """
+    s3client = boto3.client('s3', region_name= "us-east-1", aws_access_key_id=os.environ.get('AWS_ACCESS_KEY'), aws_secret_access_key=os.environ.get('AWS_SECRET_KEY'))
+    return s3client
+
 @app.post('/GetTopAttractions')
 async def get_top_attractions(data: schema.top_attractions, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
@@ -374,23 +500,19 @@ async def get_final_cost(data: schema.final_cost, getCurrentUser: schema.TokenDa
 
     merged_df = pd.merge(df_sorted, result, left_on='start_date', right_on = 'Start Date', how='inner')
     merged_df['Total_cost'] = merged_df['price'] + merged_df['Price']
-    merged_df.sort_values(by = 'Total_cost')
+    merged_df = merged_df.sort_values(by = 'Total_cost')
 
     # get the lowest cost and if matches the budget, return the dataframe else return the first row with message stating that the budget is not enough but here is the best we can do
     if merged_df['Total_cost'].min() <= data.budget_val:
         # return merged_df.loc[merged_df['Total_cost'].idxmin()]
         response_data = {'data': merged_df.loc[merged_df['Total_cost'].idxmin()],
             'status_code': '200'}
+
     else:
         # print('The budget is not enough but here is the best we can do')
-        # return merged_df.head(1)
-        response_data = {'data': merged_df.head(1),
+        response_data = {'data': merged_df.loc[merged_df['Total_cost'].idxmin()],
             'status_code': '200'}
 
-
-    # response_data = {'data': df_sorted,
-    #         'status_code': '200'}
-    
     return response_data
     # return df_sorted
 
@@ -468,6 +590,37 @@ async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: sch
             cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
             db.commit()
 
+@app.post('/CreatePDF')
+async def create_pdf(data: schema.create_pdf):
+
+    try:
+        prompt = create_itinerary(data.User_name, data.start_date, data.end_date, data.num_days_val, data.adults_number_val, data.num_rooms_val, data.detination_name_val, data.type_val, data.origin_val, data.destination_val, data.budget_val, data.hotel_name, data.price, data.airline, data.flight_price, data.total_cost, data.locations, data.pairing)
+        message_history = []
+        gpt_response = chat(prompt, message_history)
+
+        if data.language == 'English':
+            pass
+        if data.language == "Spanish":
+            gpt_response = translate_text(gpt_response, 'Spanish')
+
+        if data.language == "Hindi":
+            gpt_response = translate_text(gpt_response, 'Hindi')
+
+        pdf = MyPDF()
+        pdf.add_page()
+        text = gpt_response
+        pdf.create_page(text)
+        pdf.output(data.user_email + "_itinerary.pdf")
+
+        response_data = {'message': 'Generated PDF',
+            'status_code': '200'}
+
+        return response_data
+    
+    except Exception as e:
+        response = {'status_code': '500'}
+        return response
+    
 @app.post('/submit')
 async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     userActivityTable = db.getTable('user_activity')

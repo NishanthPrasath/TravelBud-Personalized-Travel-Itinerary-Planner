@@ -33,4 +33,4 @@ def get_top_attractions(city_name, types):
     return attractions_lst
 
 
-print(get_top_attractions("Florida", 'tourist_attraction|amusement_park|park|point_of_interest|establishment'))
+# print(get_top_attractions("Florida", 'tourist_attraction|amusement_park|park|point_of_interest|establishment'))
