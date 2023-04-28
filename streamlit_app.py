@@ -108,24 +108,50 @@ def login():
     # Login button
     if st.button("Login"):
         # Check if login is valid
-        if email == "example@example.com" and password == "password":
+        data = {
+                "grant_type": "password",
+                "username": email,
+                "password": password
+                }
+        loginResult = requests.post('http://localhost:8000/login',data=data)
+        if int(loginResult.json()['status_code']) == 200:
+            os.environ["access_token"] = loginResult.json()["access_token"]
+            with open(".env", "r") as f:
+                lines = f.readlines()
+
+            # Find the line that contains the access token
+            for i, line in enumerate(lines):
+                if line.startswith("access_token="):
+                    # Replace the access token with the new value
+                    lines[i] = "access_token=" + loginResult.json()['access_token'] + "\n"
+                    break
+
+            # Write the modified lines back to the file
+            with open(".env", "w") as f:
+                f.writelines(lines)
             st.success("Logged in!")
         else:
             st.error("Incorrect email or password")
 
     if st.button("Forgot Password"):
-        st.info("Enter your email address and we'll send you a link to reset your password")
+        st.info("Enter your email address and password over here to reset your password")
 
         # Get user input
-        email = st.text_input("Your Email")
+        yourEmail = st.text_input("Your Email")
+        newPassword = st.text_input("New Password", type="password")
+        confirmNewPassword = st.text_input("Confirm New Password", type="password")
 
         # Reset Password button
         if st.button("Reset Password"):
             # Check if email is valid
-            if email == "example@example.com":
-                st.success("Password reset link sent to email!")
+            if newPassword == confirmNewPassword:
+                resetResult = requests.post('http://localhost:8000/forgot_password',data={"Username": yourEmail, "Password": newPassword})
+                if int(resetResult.json()['status_code'])==200:
+                    st.success("Password reset successfully!")
+                else:
+                    st.error("Email address not found")
             else:
-                st.error("Email address not found")
+                st.error("Passwords do not match")
 
 def signup():
     # Set background image
@@ -137,6 +163,7 @@ def signup():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
     confirm_password = st.text_input("Confirm Password", type="password")
+    AOI = []
 
     # Display a multiselect for the user to choose the place types
     selected_place_types = st.multiselect('Select your interests', google_maps.get_place_types())
@@ -147,6 +174,7 @@ def signup():
 
     # Join the selected types with the '|' separator
     types_str = '|'.join(selected_place_types)
+    AOI.append(selected_place_types)
 
     # Define the plans as a dictionary
     plans = {
@@ -168,7 +196,11 @@ def signup():
         if password != confirm_password:
             st.error("Passwords do not match")
         else:
-            st.success("Signed up!")
+            signupResult = requests.post('http://localhost:8000/signup', json={"Username": email, "Password": password, "Name": name, "Plan": selected_plan, "AOI":AOI[0]})
+            if int(signupResult.json()['status_code'])==200:
+                st.success("Signed up!")
+            else:
+                st.error("Error signing up")
 
 def home_page():
     # Set background image
