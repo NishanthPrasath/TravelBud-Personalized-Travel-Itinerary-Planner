@@ -13,7 +13,7 @@ Travel Bud is an all-in-one vacation planning application designed to simplify t
 - Top 10 list of locations based on the user's destination, along with **optimal pairing** between the locations
 - Leveraging Booking.com API and Skyscanner API to help users find suitable accommodations and flights
 - Assistance in creating an itinerary using the Chatgpt API and optimal prompting techniques
-- Option to download itinerary in three languages (English, Spanish, and Hindi)
+- Option to download itinerary in three languages (English, Spanish, and Hindi) delivered via Hugging Face models
 - Coverage of a wide demographic, making it a global application
 
 ### Architecture Diagram
