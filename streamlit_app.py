@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from backend import google_maps, top_10_places
+from backend import google_maps, top_10_places, common_utils
 from dotenv import load_dotenv
 import os
 import airportsdata
@@ -129,8 +129,6 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
 
     if response["status_code"] == 200 or response["status_code"] == '200':
         return response
-
-
 
 # Helper function to format the selectbox options for places
 def format_select_option(pair):
@@ -331,36 +329,27 @@ def plan_my_trip_page():
                     create_pdf_res = create_pdf(num_days, num_people, num_rooms, destination.split(" (")[0], type_val, source_iata, destination_iata, budget, startdate, enddate, hotel_name, hotel_price, startdate, enddate, flight_airline, flight_price, total_cost, User_name, optimal_pairs, selected_places, language, user_email)
                     
                     file_path = os.path.join('backend', user_email + "_itinerary.pdf")
+                    file_name = user_email + '_itinerary.pdf'
 
                     if create_pdf_res["status_code"] == '200':
-                        data = {
-                            "file_name": file_path,
-                            "file_content": open(file_path, 'rb')
-                        }
-
-                        res = requests.post(
-                            'http://localhost:8000/UploadPDF', json=data)
-                        
-                        response = res.json()
-
-                        if response["status_code"] == 200 or response["status_code"] == '200':
-                            st.success('PDF Generated and Uploaded Successfully')
-
-                            data = {
-                            "bucket_name": 'damg7245-team7',
-                            "key": 'Travelbud/'+ user_email + "_itinerary.pdf"
-                            }
-
-                            res = requests.post(
-                                'http://localhost:8000/GetFileURL', json=data)
-                            
-                            response = res.json()
-
-                            if response["status_code"] == '200':
-                                st.markdown(f'<a href="{response["url"]}" download>Download file</a>', unsafe_allow_html=True)
-
+                        bucket_name = 'damg7245-team7'
+                        key = 'Travelbud/'+file_name
+                        common_utils.uploadfile(file_name, open(file_path, 'rb'))
+                        url = common_utils.get_object_url(bucket_name, key)
+                        st.success('PDF Generated Successfully')
+                        response = requests.get(url)
+                        if response.status_code == 200:
+                            with st.spinner('Downloading...'):
+                                st.download_button(
+                                    label='Download File',
+                                    data=response.content,
+                                    file_name=User_name + ' Itinerary.pdf',
+                                    mime='application/pdf'
+                                )
+                        else:
+                            st.error('Error downloading file. Please try again later.')
                     else:
-                        st.error("Oops, looks like we couldn't find any travel plans matching your search criteria! Please try again with different dates, destinations or budget.")
+                        st.error("Oops, looks like we couldn't find any travel plans matching your search criteria! Please try again with different dates or destinations.")
 
 def my_account_page():
     # Set background image

@@ -1,6 +1,6 @@
 
 import schema
-from fastapi import FastAPI,Depends
+from fastapi import FastAPI, Depends, UploadFile, File
 import os
 import pandas as pd
 from passlib.context import CryptContext
@@ -605,36 +605,3 @@ async def create_pdf(data: schema.create_pdf):
         response = {'status_code': '500'}
         return response
     
-@app.post('/UploadPDF')
-async def uploadfile(data: schema.UploadFile):
-    
-    """Upload file to S3 bucket
-    Args:
-        file_name (str): Name of the file
-        file_content (str): Content of the file
-    """
-
-    s3client = create_connection()
-    s3client.put_object(Bucket=os.environ.get('bucket_name'), Key= 'Travelbud' +'/' + data.file_name , Body= data.file_content)
-
-    response = {'status_code': '200'}
-    return response
-
-@app.post('/GetFileURL')
-async def get_object_url(data: schema.GetURL):
-    """
-    Returns a URL for the specified S3 object.
-
-    Args:
-        bucket_name (str): The name of the S3 bucket.
-        key (str): The key of the S3 object.
-
-    Returns:
-        str: The URL for the S3 object.
-    """
-    s3 = boto3.resource('s3')
-    url = f"https://{data.bucket_name}.s3.amazonaws.com/{data.key}"
-
-    response = {'url': url,
-                'status_code': '200'}
-    return response

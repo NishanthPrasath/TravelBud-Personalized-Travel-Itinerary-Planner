@@ -93,11 +93,3 @@ class create_pdf(BaseModel):
     locations: list
     language: str
     user_email: str
-
-class UploadFile(BaseModel):
-    file_name: str
-    file_content: bytes
-
-class GetURL(BaseModel):
-    bucket_name: str
-    key: str
