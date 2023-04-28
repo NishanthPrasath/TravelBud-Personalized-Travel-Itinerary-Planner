@@ -74,7 +74,6 @@ class TokenData(BaseModel):
 class api_detail_fetch(BaseModel):
     api_name:str
 class user_activity(BaseModel):
-    UserID: str
     Source: str
     Destination: str
     S_Date: str
