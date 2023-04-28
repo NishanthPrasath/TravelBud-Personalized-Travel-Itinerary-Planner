@@ -675,6 +675,7 @@ async def create_pdf(data: schema.create_pdf):
 
 @app.post('/submit')
 async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    #userActivityTable = db.getTable('user_activity')
     userActivityTable = db.getTable('User_Activity')
     
     userTable = db.getTable('User_Details')
