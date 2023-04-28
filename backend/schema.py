@@ -29,8 +29,14 @@ class TokenClass(BaseModel):
 class TokenData(BaseModel):
     username: Union[str, None] = None
 
+class UpdateData(BaseModel):
+    Username: str
+    Plan: str
+    AOI: List[str]
 class UserData(BaseModel):
     Username: str
+    Password: str
+    Name: str
     Plan: str
     AOI: List[str]
 
@@ -67,3 +73,12 @@ class TokenData(BaseModel):
     
 class api_detail_fetch(BaseModel):
     api_name:str
+class user_activity(BaseModel):
+    UserID: str
+    Source: str
+    Destination: str
+    S_Date: str
+    E_Date: str
+    Duration: int
+    TotalPeople: int
+    Budget: int

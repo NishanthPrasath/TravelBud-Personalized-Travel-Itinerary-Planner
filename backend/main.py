@@ -22,6 +22,7 @@ from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, 
 from sqlalchemy_utils import database_exists, create_database
 import oauth2
 from typing import Union
+from datetime import datetime
 
 load_dotenv()
 
@@ -60,7 +61,11 @@ async def signup(user_data: schema.UserData):
         return data
     pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_cxt.hash(user_data.Password)
-    db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan}])
+    planTable = db.getTable('plan')
+    planResult = db.selectWhere(planTable, 'plan_name', user_data.Plan)
+    planRows = [dict(row) for row in planResult]
+    plan = pd.DataFrame(planRows)
+    db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan, 'Hit_count_left': int(plan['api_limit'][0]), 'Updated_time': datetime.now()}])
     for interest in user_data.AOI:
         db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
     data = {"message": "User created successfully", "status_code": "200"}
@@ -82,7 +87,7 @@ async def forgot_password(user_data: schema.ForgotPassword):
     return data
 
 @app.post('/update_User')
-async def update_User(user_data: schema.UserData):
+async def update_User(user_data: schema.UpdateData):
     userTable = db.getTable('User_Details')
     result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
     rows = [dict(row) for row in result]
@@ -90,7 +95,15 @@ async def update_User(user_data: schema.UserData):
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
-        db.updateRow(userTable, 'Plan', user_data.Plan, 'UserID', user_data.Username)
+        if user['Plan'][0] != user_data.Plan:
+            planTable = db.getTable('plan')
+            planResult = db.selectWhere(planTable, 'plan_name', user_data.Plan)
+            planRows = [dict(row) for row in planResult]
+            plan = pd.DataFrame(planRows)
+            db.updateRow(userTable, 'Hit_count_left', int(plan['api_limit'][0]), 'UserID', user_data.Username)
+            db.updateRow(userTable, 'Updated_time', datetime.now(), 'UserID', user_data.Username)
+            db.updateRow(userTable, 'Plan', user_data.Plan, 'UserID', user_data.Username)
+
         db.deleteByValue(db.getTable('AOI'), 'UserID', user_data.Username)
         for interest in user_data.AOI:
             db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
@@ -418,10 +431,7 @@ async def useract_data():
     
 @app.post("/get_current_username")
 async def get_username():
-    
-    # print(getCurrentUser)
-    
-    return {'username': getCurrentUser.username}
+    return {'username': "test@gmail.com"}
 
 @app.post('/user_api_status')
 async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
@@ -457,3 +467,23 @@ async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: sch
             hit_count = 1
             cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
             db.commit()
+
+@app.post('/submit')
+async def submit(user_activity: schema.user_activity):
+    userActivityTable = db.getTable('user_activity')
+    
+    userTable = db.getTable('User_Details')
+    result = db.selectWhere(userTable, 'UserID', str(user_activity.UserID))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
+    current_timestamp = datetime.utcnow()
+    if len(user) == 0:
+        return {'data':'User does not exist','status':400}
+    else:
+        if int(user['Hit_count_left'][0]) == 0:
+            return {'data':'User has exhausted the API limit','status':400}
+        else:
+            updated_hit_count = int(user['Hit_count_left'][0]) - 1
+            db.updateRow(userTable,'Hit_count_left', updated_hit_count, 'UserID',user_activity.UserID)
+            db.insertRow(userActivityTable, [{"UserID":user_activity.UserID, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
+            return {'data':'Submitted successfully','status':200}

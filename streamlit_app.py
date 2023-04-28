@@ -43,8 +43,7 @@ def find_optimal_pairs(selected_places):
             "locations": selected_places
         }
 
-    res = requests.post(
-        'http://localhost:8000/FindOptimalPairs', json=data)
+    res = requests.post('http://localhost:8000/FindOptimalPairs', json=data)
                 
     response = res.json()
 
@@ -265,6 +264,11 @@ def plan_my_trip_page():
             
             # print(res["data"])
 
+            resultUser = requests.post('http://localhost:8000/submit')
+            currentUser = resultUser.json()['username']
+            dataSubmit = {"UserID": currentUser, "Source": source, "Destination": destination, "S_Date": start_date, "E_Date": end_date, "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
+            requests.post('http://localhost:8000/submit', json=dataSubmit)
+            
             if 'Airline' not in res["data"]:
                 st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
             else:
