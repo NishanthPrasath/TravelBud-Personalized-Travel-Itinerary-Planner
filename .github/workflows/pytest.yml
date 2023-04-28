@@ -26,7 +26,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run pytest
-      run: pytest
+      run: pytest test.py
       env:
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
         ALGORITHM: ${{ secrets.ALGORITHM }}
