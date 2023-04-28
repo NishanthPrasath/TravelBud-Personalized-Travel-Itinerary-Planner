@@ -5,3 +5,5 @@ final_proj_env/
 backend/language_translation.py
 venv_fp
 backend/dashboard.py
+backend\__pycache__
+
