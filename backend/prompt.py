@@ -28,24 +28,35 @@ class MyPDF(FPDF):
 def translate_text(text, dest_lang):
     if dest_lang == 'Spanish':
         dest_lang = 'es_XX'
-    elif dest_lang == 'French':
-        dest_lang = 'fr_XX'
-    elif dest_lang == 'Hindi':
+    if dest_lang == 'Hindi':
         dest_lang = 'hi_IN'
 
     model = MBartForConditionalGeneration.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
     tokenizer = MBart50TokenizerFast.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
-
     tokenizer.src_lang = "en_XX"
-    encoded_text = tokenizer(text, return_tensors="pt", max_length=1024, truncation=True)
-    generated_tokens = model.generate(
-        **encoded_text,
-        forced_bos_token_id=tokenizer.lang_code_to_id[dest_lang],
-        max_length=1024,
-        do_sample=False
-    )
-    translated_text = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
+    tokenizer.tgt_lang = dest_lang
+    
+    # Split input text into smaller chunks of length less than or equal to 1024
+    chunk_size = 1024
+    text_chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
+    # Translate each text chunk separately
+    translated_chunks = []
+    for chunk in text_chunks:
+        encoded_chunk = tokenizer(chunk, return_tensors="pt", truncation=True, max_length=1024)
+        generated_tokens = model.generate(
+            input_ids=encoded_chunk.input_ids,
+            attention_mask=encoded_chunk.attention_mask,
+            forced_bos_token_id=tokenizer.lang_code_to_id[dest_lang],
+            max_length=1024,
+            num_beams=4,
+            early_stopping=True,
+        )
+        translated_chunk = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
+        translated_chunks.append(translated_chunk)
+
+    # Concatenate the translated output of each chunk to obtain the final translated text
+    translated_text = ''.join(translated_chunks)
     return translated_text
   
 
@@ -123,8 +134,7 @@ def create_pdf(User_name, start_date, end_date, num_days_val, adults_number_val,
 
     if language == "Spanish":
         gpt_response = translate_text(gpt_response, 'Spanish')
-    if language == "French":
-        gpt_response = translate_text(gpt_response, 'French')
+
     if language == "Hindi":
         gpt_response = translate_text(gpt_response, 'Hindi')
     
