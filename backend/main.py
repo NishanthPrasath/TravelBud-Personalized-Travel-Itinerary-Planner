@@ -81,12 +81,12 @@ async def forgot_password(user_data: schema.ForgotPassword):
     rows = [dict(row) for row in result]
     user = pd.DataFrame(rows)
     if len(user) == 0:
-        data = {"message": "User not found", "status_code": "404"}
+        data = {"message": "User not found", 'status_code': "404"}
     else:
         pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
         hashed_password = pwd_cxt.hash(user_data.Password)
         db.updateRow(userTable,'Password', hashed_password, 'UserID',user_data.Username)
-        data = {"message": "Password updated successfully", "status_code": "200"}
+        data = {"message": "Password updated successfully", 'status_code': "200"}
     return data
 
 @app.post('/update_User')
@@ -404,7 +404,7 @@ async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_cur
     #     'DB_PASSWORD':'shubh',
     #     'DB_ADDRESS':'localhost',
     #     'DB_NAME':'final_project'}
-    engine=create_engine('postgresql://'+str(os.environ.get('DB_USER_NAME'))+':'+str(os.environ.get('DB_PASSWORD'))+'@'+str(os.environ.get('DB_ADDRESS'))+':5432/'+str(os.environ.get('DB_NAME')))
+    engine=create_engine('postgresql://'+str(os.environ.get('DB_USER_NAME'))+':'+str(os.environ.get('DB_PASSWORD'))+'@'+str(os.environ.get('DB_HOST'))+':5432/'+str(os.environ.get('DB_NAME')))
     connection = engine.connect()
     metadata = MetaData()
     try:
@@ -436,47 +436,47 @@ async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_cur
 async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     return {'username': getCurrentUser.username}
 
-@app.post('/user_api_status')
-async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
-    # database_file_name = "assignment_01.db"
-    # database_file_path = os.path.join(project_dir, os.path.join('data/',database_file_name))
-    # db = sqlite3.connect(database_file_path)
-    cursor = db.cursor()
-    cursor.execute('''CREATE TABLE if not exists user_activity (username,service_plan,api_limit,date,api_name,hit_count)''')
-    cursor.execute('SELECT * FROM user_activity WHERE username =? ORDER BY date DESC LIMIT 1',(getCurrentUser.username,))
-    result = cursor.fetchone()
-    username=getCurrentUser.username
-    api_limit=pd.read_sql_query('Select api_limit from Users where username="{}"'.format(username),db).api_limit.item()
-    date = datetime.utcnow()
-    service_plan=pd.read_sql_query('Select service_plan from Users where username="{}"'.format(username),db).service_plan.item()
-    api_name=api_details.api_name 
-    if not result:
-        hit_count = 1
-        cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
-        db.commit()
-    else:
-        last_date = datetime.strptime(result[3], '%Y-%m-%d %H:%M:%S.%f')
-        time_diff = datetime.utcnow() - last_date
-        if time_diff <= timedelta(hours=1):
-            if result[5]<api_limit:
-                hit_count = result[5] + 1
-                cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
-                db.commit()
-            else:
-                db.commit()
-                db.close() 
-                return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
-        else:
-            hit_count = 1
-            cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
-            db.commit()
+# @app.post('/user_api_status')
+# async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+#     # database_file_name = "assignment_01.db"
+#     # database_file_path = os.path.join(project_dir, os.path.join('data/',database_file_name))
+#     # db = sqlite3.connect(database_file_path)
+#     cursor = db.cursor()
+#     cursor.execute('''CREATE TABLE if not exists user_activity (username,service_plan,api_limit,date,api_name,hit_count)''')
+#     cursor.execute('SELECT * FROM user_activity WHERE username =? ORDER BY date DESC LIMIT 1',(getCurrentUser.username,))
+#     result = cursor.fetchone()
+#     username=getCurrentUser.username
+#     api_limit=pd.read_sql_query('Select api_limit from Users where username="{}"'.format(username),db).api_limit.item()
+#     date = datetime.utcnow()
+#     service_plan=pd.read_sql_query('Select service_plan from Users where username="{}"'.format(username),db).service_plan.item()
+#     api_name=api_details.api_name 
+#     if not result:
+#         hit_count = 1
+#         cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+#         db.commit()
+#     else:
+#         last_date = datetime.strptime(result[3], '%Y-%m-%d %H:%M:%S.%f')
+#         time_diff = datetime.utcnow() - last_date
+#         if time_diff <= timedelta(hours=1):
+#             if result[5]<api_limit:
+#                 hit_count = result[5] + 1
+#                 cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+#                 db.commit()
+#             else:
+#                 db.commit()
+#                 db.close() 
+#                 return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+#         else:
+#             hit_count = 1
+#             cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+#             db.commit()
 
 @app.post('/submit')
 async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     userActivityTable = db.getTable('user_activity')
     
     userTable = db.getTable('User_Details')
-    result = db.selectWhere(userTable, 'UserID', str(user_activity.UserID))
+    result = db.selectWhere(userTable, 'UserID', str(getCurrentUser.username))
     rows = [dict(row) for row in result]
     user = pd.DataFrame(rows)
     current_timestamp = datetime.utcnow()
@@ -488,5 +488,5 @@ async def submit(user_activity: schema.user_activity, getCurrentUser: schema.Tok
         else:
             updated_hit_count = int(user['Hit_count_left'][0]) - 1
             db.updateRow(userTable,'Hit_count_left', updated_hit_count, 'UserID',user_activity.UserID)
-            db.insertRow(userActivityTable, [{"UserID":user_activity.UserID, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
+            db.insertRow(userActivityTable, [{"UserID":getCurrentUser.username, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
             return {'data':'Submitted successfully','status':200}

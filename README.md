@@ -60,7 +60,13 @@ AWS_LOG_ACCESS_KEY =
 AWS_LOG_SECRET_KEY = 
 bucket_name= <Enter AWS Bucket Name>
 RAPID_API_KEY =
-GOOGLE_MAPS_API_KEY = 
+GOOGLE_MAPS_API_KEY =
+DB_USER_NAME=
+DB_PASSWORD= 
+DB_HOST=
+DB_NAME= 
+SECRET_KEY= <secret key generated using secrets package>
+ALGORITHM=HS256
 ```
 
 

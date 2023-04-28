@@ -1,3 +1,12 @@
+import pytest
+import sys
+import os
+import json
+import os
+sys.path.append('../Assignment_02')
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+import jwt
 from fastapi.testclient import TestClient
 from backend.main import app
 from backend import schema
@@ -64,7 +73,3 @@ def test_get_top_attractions():
     assert "status_code" in response_data
     assert response_data["status_code"] == "200"
     assert len(response_data["data"]) >= 10
-
-
-
-
