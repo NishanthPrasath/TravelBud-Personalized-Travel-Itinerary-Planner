@@ -326,6 +326,12 @@ def plan_my_trip_page():
     language = st.selectbox("Select a language", options = ['English','Spanish','Hindi'])
 
     if st.button("Submit"):
+            
+        with st.spinner('Hold on tight, we\'re cooking up the perfect adventure for you...'):
+
+            for i in range(len(selected_places)):
+                selected_places[i] += ' ' + destination.split(" (")[0]
+
             res_optimal_pairs = find_optimal_pairs(selected_places)
 
             if res_optimal_pairs["status_code"] == '500':
