@@ -58,8 +58,8 @@ def get_location_id(destination):
     querystring = {"name": destination,"locale":"en-gb"}
 
     headers = {
-        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
-        "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
+    "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_HOTEL'),
+    "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
     }
 
     response = requests.request("GET", url, headers=headers, params=querystring)
@@ -250,19 +250,26 @@ def plan_my_trip_page():
         if selected_places:
             st.info("You selected: " + ", ".join(selected_places))
 
-
     if st.button("Submit"):
 
-        st.write("Thank you for submitting your travel requirements!")
+        with st.spinner('Hold on tight, we\'re cooking up the perfect adventure for you...'):
 
-        with st.spinner('Processing'):
+            for i in range(len(selected_places)):
+                selected_places[i] += ' ' + destination.split(" (")[0]
+
             find_optimal_pairs(selected_places)
 
             des_id, type_des= get_location_id(destination.split(" (")[0])
 
             res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
+            
+            # print(res["data"])
 
-            st.write(res["data"])
+            if 'Airline' not in res["data"]:
+                st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
+            else:
+                st.write(res["data"])
+
 
 
 def my_account_page():
