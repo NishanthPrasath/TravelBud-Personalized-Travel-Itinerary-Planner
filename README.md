@@ -1,8 +1,8 @@
 # TravelBud
 
-> [Application Link]() <br>
+> [Application Link](http://34.148.127.152:8503/) <br>
 > [Codelabs Documentation](https://codelabs-preview.appspot.com/?file_id=1jhLIlc8r7w5w6xI9wYMLNCgZBmF4S3Pl0wPJ1eCel9I#0)<br>
-> [FastAPI Docs]() <br>
+
 
 ### Introduction
 
