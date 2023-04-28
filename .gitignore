@@ -1,5 +1,6 @@
 final_proj_env/
 .env
+.pyc
 
 backend/language_translation.py
 venv_fp
