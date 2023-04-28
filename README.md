@@ -1,5 +1,9 @@
 # TravelBud
 
+> [Application Link]() <br>
+> [Codelabs Documentation]([https://codelabs-preview.appspot.com/?file_id=1zG832dq7KBnSKgSkrVcLHVQBfarUR8ALQIqqGmswVhE#4](https://codelabs-preview.appspot.com/?file_id=1jhLIlc8r7w5w6xI9wYMLNCgZBmF4S3Pl0wPJ1eCel9I#0))<br>
+> [FastAPI Docs]() <br>
+
 ### Introduction
 
 Travel Bud is an all-in-one vacation planning application designed to simplify the process of researching and booking flights, accommodations, and local attractions. The Personalized Travel Itinerary Planner creates tailored travel itineraries based on user preferences and budget constraints, making vacation planning a more efficient and enjoyable experience.
@@ -16,6 +20,8 @@ Travel Bud is an all-in-one vacation planning application designed to simplify t
 - Option to download itinerary in three languages (English, Spanish, and Hindi) delivered via Hugging Face models
 - Coverage of a wide demographic, making it a global application
 
+### Architecture Diagram
+<img src="Architecture Diagram.jpeg" alt="Architecture Diagram">
 
 ### Optimization 
 **Location Optimization:**
@@ -37,14 +43,6 @@ Our algorithm then finds the optimal cost that fits the user's budget, giving th
 In cases where the user's budget does not match their desired options, we recommend the lowest possible cost to the user, ensuring that they get the most out of their vacation while saving money.
 
 Overall, our optimization algorithms for location and booking ensure that Travel Bud users have the best possible vacation experience while also optimizing their time and budget.
-
-### Architecture Diagram
-<img src="Architecture Diagram.jpeg" alt="Architecture Diagram">
-
-
-
-[Codelab Link](url) <br>
-[Application Link](url) <br>
 
 ### Steps to reproduce
 To run it locally please follow the steps below - 
