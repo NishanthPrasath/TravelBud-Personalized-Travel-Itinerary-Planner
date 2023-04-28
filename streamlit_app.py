@@ -6,6 +6,7 @@ import os
 import airportsdata
 from datetime import datetime,timedelta
 import pandas as pd
+from jose import JWTError, jwt
 # import seaborn as sns
 # import matplotlib.pyplot as plt
 # import numpy as np
@@ -15,16 +16,40 @@ load_dotenv()
 
 API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
-# ACCESS_TOKEN = os.environ["access_token"]
-# headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+ACCESS_TOKEN = st.session_state.get("token", None)
+headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
 
 # Define background images
 # home_bg = ""
 # page_bg = ""
+# def decode_token(token):
+#     try:
+        
+#         res = requests.get(
+#         'http://localhost:8000/get_current_username', headers=headers)
+        
+#         return res["username"]
+#     except:
+#         return None
 
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = os.environ.get("ALGORITHM")
+
+def decode_token(token):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload["sub"]
+    except:
+        return None    
+    
 # Set page config
-st.set_page_config(page_title="TravelBud", page_icon=":earth_americas:")
+# st.set_page_config(page_title="TravelBud", page_icon=":earth_americas:")
+
+is_logged_in = False
+
+if 'is_logged_in' not in st.session_state:
+    st.session_state['is_logged_in'] = False
 
 def get_top_attractions(destination, interests):
     
@@ -104,8 +129,9 @@ def format_select_option(pair):
 def login():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
-
-    st.subheader('Login')
+    global is_logged_in
+    st.title('TravelBud')
+    st.subheader('Welcome to TravelBud! Please Login to proceed.')
     # Get user input
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
@@ -121,6 +147,8 @@ def login():
         loginResult = requests.post('http://localhost:8000/login',data=data)
         if int(loginResult.json()['status_code']) == 200:
             os.environ["access_token"] = loginResult.json()["access_token"]
+            access_token=loginResult.json()["access_token"]
+            
             with open(".env", "r") as f:
                 lines = f.readlines()
 
@@ -135,22 +163,52 @@ def login():
             with open(".env", "w") as f:
                 f.writelines(lines)
             st.success("Logged in!")
+            
+            st.session_state['is_logged_in'] = True
+            # print(access_token)
+            return access_token
+            
         else:
             st.error("Incorrect email or password")
 
-    if st.button("Forgot Password"):
-        st.info("Enter your email address and password over here to reset your password")
+    # if st.button("Forgot Password"):
+    #     st.info("Enter your email address and password over here to reset your password")
 
-        # Get user input
-        yourEmail = st.text_input("Your Email")
-        newPassword = st.text_input("New Password", type="password")
-        confirmNewPassword = st.text_input("Confirm New Password", type="password")
+    #     # Get user input
+    #     yourEmail = st.text_input("Your Email")
+    #     newPassword = st.text_input("New Password", type="password")
+    #     confirmNewPassword = st.text_input("Confirm New Password", type="password")
 
         # Reset Password button
-        if st.button("Reset Password"):
+        
+
+def forget_password():
+    st.info("Enter your email address and password over here to reset your password")
+    yourEmail = st.text_input("Your Email")
+    newPassword = st.text_input("New Password", type="password")
+    confirmNewPassword = st.text_input("Confirm New Password", type="password")
+    # password_regex = "^[a-zA-Z0-9]{8,}$"
+    # username = st.text_input("Enter username")
+    # password = st.text_input(
+    #     "Enter new password", type="password"
+    # )  # Validate credit card
+    # if not re.match(password_regex, password):
+    #     st.error(
+    #         "Password must be at least 8 characters long and can only contain alphanumeric characters."
+    #     )
+    # if st.button("Update Password"):
+    #     url = f"{PREFIX}/forget-password?username={username}&password={password}"
+    #     response = requests.put(url)
+    #     if response.status_code == 200:
+    #         st.write("Password Updated Successfully")
+    #     elif response.status_code == 404:
+    #         st.error("User not found.")
+    #     else:
+    #         st.error("Error updating password.")
+    if st.button("Reset Password"):
             # Check if email is valid
             if newPassword == confirmNewPassword:
-                resetResult = requests.post('http://localhost:8000/forgot_password',data={"Username": yourEmail, "Password": newPassword})
+                resetResult = requests.post('http://localhost:8000/forgot_password',json={"Username": yourEmail, "Password": newPassword})
                 if int(resetResult.json()['status_code'])==200:
                     st.success("Password reset successfully!")
                 else:
@@ -213,19 +271,19 @@ def home_page():
     st.markdown("# TravelBud")
 
     # Create a menu with the options
-    menu = ["Select", "Login", "Signup"]
-    choice = st.sidebar.selectbox("Select an option", menu)
+    # menu = ["Home", "Login", "Signup"]
+    # choice = st.sidebar.selectbox("Select an option", menu)
 
-    if choice == "Login":
-        login()
-    elif choice == "Signup":
-        signup()
+    # if choice == "Login":
+        # login()
+    # elif choice == "Signup":
+        # signup()
 
 
 def plan_my_trip_page():
     # Set background image
     # st.markdown(f'<style>body{{background-image: url({page_bg}); background-size: cover;}}</style>', unsafe_allow_html=True)
-
+    
     st.markdown("# TravelBud")
     st.subheader('Plan My Trip')
     # st.sidebar.markdown("# Page 2 ❄️")
@@ -300,6 +358,10 @@ def plan_my_trip_page():
 
             st.write(res["data"])
 
+            dataSubmit = {"Source": source, "Destination": destination, "S_Date": start_date, "E_Date": end_date, "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
+            responseSubmit=requests.post('http://localhost:8000/submit', json=dataSubmit,headers=headers)
+            st.write(responseSubmit.json()['data'])
+            
 
 def my_account_page():
     # Set background image
@@ -349,11 +411,10 @@ def analytics_page():
     st.markdown("# TravelBud")
     st.subheader('Admin Dashboard - Welcome!')    
     # st.sidebar.markdown("# Page 3 🎉")
-    st.sidebar.button("Logout")
     
     try:
         fastapi_url="http://localhost:8000/get_useract_data"
-        response=requests.get(fastapi_url)
+        response=requests.get(fastapi_url,headers=headers)
         # print(response.json)
     except:
         print('user activity data not yet generated') 
@@ -515,13 +576,54 @@ def analytics_page():
 
     except:
         print('empty table error')
-        
-page_names_to_funcs = {
-    "Home": home_page,
-    "Account": my_account_page,
-    "Plan My Trip": plan_my_trip_page,
-    "Dashboard": analytics_page
-}
 
-selected_page = st.sidebar.radio("Select a page", page_names_to_funcs.keys())
-page_names_to_funcs[selected_page]()
+
+pages = {
+        "Home": home_page,
+        "My Account": my_account_page,
+        "Plan My Trip": plan_my_trip_page,
+        "Analytics": analytics_page
+    }
+        
+# Define the Streamlit app
+def main():
+    st.set_page_config(
+        page_title="Travel Bud",page_icon=":earth_americas:" ,layout="wide"
+    )
+    st.sidebar.title("Navigation")
+
+    # Check if user is signed in
+    token = st.session_state.get("token", None)
+    user_id = decode_token(token)
+
+    # Render the navigation sidebar
+    if user_id is not None and user_id != "admin":
+        selection = st.sidebar.radio(
+            "Go to", ["Home","My Account","Plan My Trip","Log Out"]
+        )
+    elif user_id == "admin":
+        selection = st.sidebar.radio("Go to", ["Analytics", "Log Out"])
+    else:
+        selection = st.sidebar.radio("Go to", ["Sign In", "Sign Up", "Forget Password"])
+
+    # Render the selected page or perform logout
+    if selection == "Log Out":
+        st.session_state.clear()
+        st.sidebar.success("You have successfully logged out!")
+        st.experimental_rerun()
+    elif selection == "Sign In":
+        token = login()
+        if token is not None:
+            st.session_state.token = token
+            st.experimental_rerun()
+    elif selection == "Sign Up":
+        signup()
+    elif selection == "Forget Password":
+        forget_password()
+    else:
+        page = pages[selection]
+        page()
+
+
+if __name__ == "__main__":
+    main()        
