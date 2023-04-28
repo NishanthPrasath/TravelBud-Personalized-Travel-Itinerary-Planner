@@ -59,7 +59,7 @@ def get_top_attractions(destination, interests):
     }
 
     res = requests.post(
-        'http://localhost:8000/GetTopAttractions', json=data)
+        'http://localhost:8000/GetTopAttractions', json=data,headers=headers)
     
     response = res.json()
 
@@ -74,7 +74,7 @@ def find_optimal_pairs(selected_places):
             }
 
         res = requests.post(
-            'http://localhost:8000/FindOptimalPairs', json=data)
+            'http://localhost:8000/FindOptimalPairs', json=data,headers=headers)
                     
         response = res.json()
 
@@ -91,14 +91,15 @@ def get_location_id(destination):
 
     querystring = {"name": destination,"locale":"en-gb"}
 
-    headers = {
-        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+    headers_hotel = {
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_HOTEL'),
         "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
     }
-
-    response = requests.request("GET", url, headers=headers, params=querystring)
-
+    print('111111')
+    response = requests.request("GET", url, headers=headers_hotel, params=querystring)
+    print(response)
     response = response.json()
+    print(response[1]['dest_id'])
     return response[1]['dest_id'], response[1]['dest_type']
 
 def create_pdf(num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, start_date, end_date, hotel_name, price, flight_start_date, flight_end_date, airline, flight_price, total_cost, User_name, pairing, locations, language, user_email):
@@ -129,7 +130,7 @@ def create_pdf(num_days_val, adults_number_val, num_rooms_val, detination_name_v
         }
 
     res = requests.post(
-        'http://localhost:8000/CreatePDF', json=data)
+        'http://localhost:8000/CreatePDF', json=data,headers=headers)
                 
     response = res.json()
 
@@ -152,7 +153,7 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
     }
 
     res = requests.post(
-        'http://localhost:8000/GetFinalCost', json=data)
+        'http://localhost:8000/GetFinalCost', json=data,headers=headers)
     
     response = res.json()
 
@@ -384,9 +385,9 @@ def plan_my_trip_page():
     language = st.selectbox("Select a language", options = ['English','Spanish','Hindi'])
 
     if st.button("Submit"):
-        dataSubmit = {"Source": source, "Destination": destination, "S_Date": start_date, "E_Date": end_date, "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
+        dataSubmit = {"Source": source, "Destination": destination, "S_Date": start_date.strftime('%Y-%m-%d'), "E_Date": end_date.strftime('%Y-%m-%d'), "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
         responseSubmit=requests.post('http://localhost:8000/submit', json=dataSubmit,headers=headers)
-        st.write(responseSubmit.json()['data'])
+        # st.write(responseSubmit.json()['data'])
             
         with st.spinner('Hold on tight, we\'re cooking up the perfect adventure for you...'):
 
@@ -400,32 +401,6 @@ def plan_my_trip_page():
 
                 res_optimal_pairs = find_optimal_pairs(selected_places)
 
-
-                res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
-                
-                if 'Airline' not in res["data"]:
-                    st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
-                else:                
-                    startdate = res["data"]['start_date']
-                    enddate = res["data"]['end_date']
-                    hotel_name = res["data"]['hotel_name']
-                    hotel_price = res["data"]['price']
-                    flight_airline = res["data"]['Airline']
-                    flight_price = res["data"]['Price']
-                    total_cost = res["data"]['Total_cost']
-
-                    print(res["data"])
-
-                    if total_cost > budget:
-                        st.warning(f"Uh oh! Looks like your budget is a bit tight for this trip. But don't worry, we've done our best to find the best options for you.")
-                    
-                    currentRes = requests.post('http://localhost:8000/get_current_username',headers=headers)
-                    currentUserEmail = currentRes.json()['username']
-                    resUserName = requests.post('http://localhost:8000/get_current_name',json={'Username':currentUserEmail}).json()['Name']
-
-                    User_name = resUserName
-                    user_email = currentUserEmail
-
                 if res_optimal_pairs["status_code"] == '500':
                     st.error('Could not find optimal pairs based on your selection. Please try again.')
                 else:
@@ -433,9 +408,8 @@ def plan_my_trip_page():
 
                     des_id, type_des= get_location_id(destination.split(" (")[0])
 
-
                     res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
-                    
+                
                     if 'Airline' not in res["data"]:
                         st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
                     else:                
@@ -452,8 +426,15 @@ def plan_my_trip_page():
                         if total_cost > budget:
                             st.warning(f"Uh oh! Looks like your budget is a bit tight for this trip. But don't worry, we've done our best to find the best options for you.")
                         
-                        User_name = 'Nishanth Prasath'
-                        user_email = 'nishanth@gmail.com'
+                        # User_name = 'Nishanth Prasath'
+                        # user_email = 'nishanth@gmail.com'
+
+                        currentRes = requests.post('http://localhost:8000/get_current_username',headers=headers)
+                        currentUserEmail = currentRes.json()['username']
+                        resUserName = requests.post('http://localhost:8000/get_current_name',json={'Username':currentUserEmail}).json()['Name']
+
+                        User_name = resUserName
+                        user_email = currentUserEmail
 
                         create_pdf_res = create_pdf(num_days, num_people, num_rooms, destination.split(" (")[0], type_val, source_iata, destination_iata, budget, startdate, enddate, hotel_name, hotel_price, startdate, enddate, flight_airline, flight_price, total_cost, User_name, optimal_pairs, selected_places, language, user_email)
                         
@@ -465,6 +446,7 @@ def plan_my_trip_page():
                             key = 'Travelbud/'+file_name
                             common_utils.uploadfile(file_name, open(file_path, 'rb'))
                             url = common_utils.get_object_url(bucket_name, key)
+                            print(url)
                             st.success('PDF Generated Successfully')
                             response = requests.get(url)
                             if response.status_code == 200:

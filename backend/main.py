@@ -508,7 +508,7 @@ async def get_final_cost(data: schema.final_cost, getCurrentUser: schema.TokenDa
     else:
         # print('The budget is not enough but here is the best we can do')
         # return merged_df.head(1)
-        response_data = {'data': merged_df.head(1),
+        response_data = {'data': merged_df.loc[merged_df['Total_cost'].idxmin()],
             'status_code': '200'}
 
 
