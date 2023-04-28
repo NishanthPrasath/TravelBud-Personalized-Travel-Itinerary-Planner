@@ -555,6 +555,19 @@ async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_cur
 async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     return {'username': getCurrentUser.username}
 
+@app.post("/get_current_name")
+async def get_username(getCurrentName: schema.currentName):
+    userTable = db.getTable('User_Details')
+    result = db.selectWhere(userTable, 'UserID', str(getCurrentName.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
+    if len(user) == 0:
+        return {'data':'User does not exist','status':400}
+    else:
+        hitCount =  int(user['Hit_count_left'][0])
+        name = str(user['Name'][0])
+        return {'Name': name, 'Hit_count': hitCount, 'status':200}
+
 @app.post('/user_api_status')
 async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     # database_file_name = "assignment_01.db"

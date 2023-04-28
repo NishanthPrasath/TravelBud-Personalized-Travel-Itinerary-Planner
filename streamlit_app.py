@@ -359,8 +359,12 @@ def plan_my_trip_page():
                     if total_cost > budget:
                         st.warning(f"Uh oh! Looks like your budget is a bit tight for this trip. But don't worry, we've done our best to find the best options for you.")
                     
-                    User_name = 'Nishanth Prasath'
-                    user_email = 'nishanth@gmail.com'
+                    currentRes = requests.post('http://localhost:8000/get_current_username',headers=headers)
+                    currentUserEmail = currentRes.json()['username']
+                    resUserName = requests.post('http://localhost:8000/get_current_name',json={'Username':currentUserEmail}).json()['Name']
+
+                    User_name = resUserName
+                    user_email = currentUserEmail
 
                     create_pdf_res = create_pdf(num_days, num_people, num_rooms, destination.split(" (")[0], type_val, source_iata, destination_iata, budget, startdate, enddate, hotel_name, hotel_price, startdate, enddate, flight_airline, flight_price, total_cost, User_name, optimal_pairs, selected_places, language, user_email)
                     
