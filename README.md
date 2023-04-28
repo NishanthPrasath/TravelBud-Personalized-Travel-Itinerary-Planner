@@ -1,9 +1,11 @@
 # TravelBud
 
 ### Introduction
+
 Travel Bud is an all-in-one vacation planning application designed to simplify the process of researching and booking flights, accommodations, and local attractions. The Personalized Travel Itinerary Planner creates tailored travel itineraries based on user preferences and budget constraints, making vacation planning a more efficient and enjoyable experience.
 
 ### Features
+
 - Personalized recommendations based on user areas of interest
 - Ability for users to update their password and preferences
 - Rate limiting based on selected plans
@@ -14,4 +16,23 @@ Travel Bud is an all-in-one vacation planning application designed to simplify t
 - Option to download itinerary in three languages (English, Spanish, and Hindi)
 - Coverage of a wide demographic, making it a global application
 
+### Architecture Diagram
+
+
+### Steps to reproduce
+To run it locally please follow the steps below - 
+- clone the repo 
+- create a virtual environment and install requirements.txt
+- subscribe to both these free tiers on Rapid API [Booking.com](https://rapidapi.com/tipsters/api/booking-com) and [Skyscanner.com]([url](https://rapidapi.com/3b-data-3b-data-default/api/skyscanner44/))
+- create a .env file with following variables
+```
+OPENAI_API_KEY=
+AWS_ACCESS_KEY=
+AWS_SECRET_KEY=
+AWS_LOG_ACCESS_KEY = 
+AWS_LOG_SECRET_KEY = 
+bucket_name= <Enter AWS Bucket Name>
+RAPID_API_KEY =
+GOOGLE_MAPS_API_KEY = 
+```
 
