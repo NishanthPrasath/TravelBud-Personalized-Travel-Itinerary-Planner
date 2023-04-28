@@ -11,6 +11,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      FINAL_PROJ_ENV: ${{ secrets.FINAL_PROJ_ENV }}
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
@@ -25,9 +27,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r Requirements.txt
 
+    - name: Set environment variables
+      run: echo "$FINAL_PROJ_ENV" >> .env
+
     - name: Run pytest
       run: pytest test.py
-      env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        ALGORITHM: ${{ secrets.ALGORITHM }}
-        GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
