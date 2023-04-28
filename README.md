@@ -23,7 +23,7 @@ Travel Bud is an all-in-one vacation planning application designed to simplify t
 To run it locally please follow the steps below - 
 - clone the repo 
 - create a virtual environment and install requirements.txt
-- subscribe to both these free tiers on Rapid API [Booking.com](https://rapidapi.com/tipsters/api/booking-com) and [Skyscanner.com]([url](https://rapidapi.com/3b-data-3b-data-default/api/skyscanner44/))
+- subscribe to both these free tiers on Rapid API [Booking.com](https://rapidapi.com/tipsters/api/booking-com) and [Skyscanner.com](https://rapidapi.com/3b-data-3b-data-default/api/skyscanner44/)
 - create a .env file with following variables
 ```
 OPENAI_API_KEY=
