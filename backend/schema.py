@@ -29,6 +29,10 @@ class TokenClass(BaseModel):
 class TokenData(BaseModel):
     username: Union[str, None] = None
 
+class UpdateData(BaseModel):
+    Username: str
+    Plan: str
+    AOI: List[str]
 class UserData(BaseModel):
     Username: str
     Password: str
@@ -93,3 +97,12 @@ class create_pdf(BaseModel):
     locations: list
     language: str
     user_email: str
+
+class user_activity(BaseModel):
+    Source: str
+    Destination: str
+    S_Date: str
+    E_Date: str
+    Duration: int
+    TotalPeople: int
+    Budget: int

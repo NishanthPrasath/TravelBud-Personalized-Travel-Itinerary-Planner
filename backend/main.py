@@ -25,6 +25,7 @@ from typing import Union
 from fpdf import FPDF
 import openai
 from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
+from datetime import datetime
 
 load_dotenv()
 
@@ -54,7 +55,9 @@ class MyPDF(FPDF):
 @app.post('/login')
 async def login(login_data: OAuth2PasswordRequestForm = Depends()):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', login_data.username), db)
+    result = db.selectWhere(userTable, 'UserID', str(login_data.username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
@@ -63,7 +66,7 @@ async def login(login_data: OAuth2PasswordRequestForm = Depends()):
             print("password verified")
             data = {'message': 'Username verified successfully', 'status_code': '200'}
             accessToken = access_token.create_access_token(data={"sub": str(user['UserID'][0])})
-            data = {'message': "Success",'access_token':accessToken,'service_plan': user['service_plan'][0],'status_code': '200'}
+            data = {'message': "Success",'access_token':accessToken,'service_plan': user['Plan'][0],'status_code': '200'}
         else:
             data = {'message': 'Password is incorrect','status_code': '401'}
     return data
@@ -71,39 +74,55 @@ async def login(login_data: OAuth2PasswordRequestForm = Depends()):
 @app.post('/signup')
 async def signup(user_data: schema.UserData):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
-    if len(user) == 0:
-        pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        hashed_password = pwd_cxt.hash(user_data.Password)
-        db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan}])
-        data = {"message": "User created successfully", "status_code": "200"}
-        for interest in user_data.AOI:
-            db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
-    else:
+    user = db.selectWhere(userTable, 'UserID', user_data.Username)
+    for u in user:
         data = {"message": "This email already exists", "status_code": "404"}
+        return data
+    pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_cxt.hash(user_data.Password)
+    planTable = db.getTable('plan')
+    planResult = db.selectWhere(planTable, 'plan_name', user_data.Plan)
+    planRows = [dict(row) for row in planResult]
+    plan = pd.DataFrame(planRows)
+    db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan, 'Hit_count_left': int(plan['api_limit'][0]), 'Updated_time': datetime.now()}])
+    for interest in user_data.AOI:
+        db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
+    data = {"message": "User created successfully", "status_code": "200"}
     return data
 
 @app.post('/forgot_password')
 async def forgot_password(user_data: schema.ForgotPassword):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
         pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
         hashed_password = pwd_cxt.hash(user_data.Password)
-        db.updateRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password}])
+        db.updateRow(userTable,'Password', hashed_password, 'UserID',user_data.Username)
         data = {"message": "Password updated successfully", "status_code": "200"}
     return data
 
 @app.post('/update_User')
-async def update_User(user_data: schema.UserData):
+async def update_User(user_data: schema.UpdateData, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
-        db.updateRow(userTable, [{'UserID': user_data.Username, 'Name': user_data.Name, 'Plan': user_data.Plan}])
+        if user['Plan'][0] != user_data.Plan:
+            planTable = db.getTable('plan')
+            planResult = db.selectWhere(planTable, 'plan_name', user_data.Plan)
+            planRows = [dict(row) for row in planResult]
+            plan = pd.DataFrame(planRows)
+            db.updateRow(userTable, 'Hit_count_left', int(plan['api_limit'][0]), 'UserID', user_data.Username)
+            db.updateRow(userTable, 'Updated_time', datetime.now(), 'UserID', user_data.Username)
+            db.updateRow(userTable, 'Plan', user_data.Plan, 'UserID', user_data.Username)
+
         db.deleteByValue(db.getTable('AOI'), 'UserID', user_data.Username)
         for interest in user_data.AOI:
             db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
@@ -350,7 +369,7 @@ def create_connection():
     return s3client
 
 @app.post('/GetTopAttractions')
-async def get_top_attractions(data: schema.top_attractions):
+async def get_top_attractions(data: schema.top_attractions, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
@@ -393,7 +412,7 @@ async def get_top_attractions(data: schema.top_attractions):
     return response_data
 
 @app.post('/FindOptimalPairs')
-async def find_optimal_pairs(data: schema.optimal_pairs):
+async def find_optimal_pairs(data: schema.optimal_pairs, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     gmaps = googlemaps.Client(key= os.environ.get('GOOGLE_MAPS_API_KEY'))
 
@@ -432,7 +451,7 @@ async def find_optimal_pairs(data: schema.optimal_pairs):
     return response_data
 
 @app.post('/GetFinalCost')
-async def get_final_cost(data: schema.final_cost):
+async def get_final_cost(data: schema.final_cost, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     # get hotel data
     start_date = data.start_date_val #str
@@ -499,7 +518,7 @@ async def get_final_cost(data: schema.final_cost):
 
 
 @app.get("/get_useract_data")
-async def useract_data():
+async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     # config={'DB_USER_NAME':'postgres',
     #     'DB_PASSWORD':'shubh',
     #     'DB_ADDRESS':'localhost',
@@ -509,14 +528,14 @@ async def useract_data():
     metadata = MetaData()
     try:
         user_data = Table('User_Details', metadata, autoload_with=engine)
-        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan)
+        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan,user_data.c.Hit_count_left,user_data.c.Updated_time)
         results = connection.execute(query).fetchall()
-        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan'])
+        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan','Hit_count_left','Updated_time'])
         df_user_data=user_data.to_dict(orient='records')
-        user_activity = Table('user_activity', metadata, autoload_with=engine)
-        query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.PlacesToVisit,user_activity.c.time_stamp)
+        user_activity = Table('User_Activity', metadata, autoload_with=engine)
+        query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.Time_stamp)
         results = connection.execute(query).fetchall()
-        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','PlacesToVisit','time_stamp','hit_count'])
+        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','Time_stamp'])
         df_user_activity=user_activity.to_dict(orient='records')
         plan = Table('plan', metadata, autoload_with=engine)
         query=select(plan.c.plan_name,plan.c.api_limit)
@@ -524,7 +543,7 @@ async def useract_data():
         plan=pd.DataFrame(results,columns=['plan_name','api_limit'])
         df_plan=plan.to_dict(orient='records')
         aoi = Table('AOI', metadata, autoload_with=engine)
-        query=select(aoi.c.UserID,plan.c.Interest)
+        query=select(aoi.c.UserID,aoi.c.Interest)
         results = connection.execute(query).fetchall()
         aoi=pd.DataFrame(results,columns=['UserID','Interest'])
         df_aoi=plan.to_dict(orient='records')
@@ -533,10 +552,7 @@ async def useract_data():
         return {'data':'No data found'}
     
 @app.post("/get_current_username")
-async def get_username():
-    
-    # print(getCurrentUser)
-    
+async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     return {'username': getCurrentUser.username}
 
 @app.post('/user_api_status')
@@ -605,3 +621,22 @@ async def create_pdf(data: schema.create_pdf):
         response = {'status_code': '500'}
         return response
     
+@app.post('/submit')
+async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    userActivityTable = db.getTable('user_activity')
+    
+    userTable = db.getTable('User_Details')
+    result = db.selectWhere(userTable, 'UserID', str(user_activity.UserID))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
+    current_timestamp = datetime.utcnow()
+    if len(user) == 0:
+        return {'data':'User does not exist','status':400}
+    else:
+        if int(user['Hit_count_left'][0]) == 0:
+            return {'data':'User has exhausted the API limit','status':400}
+        else:
+            updated_hit_count = int(user['Hit_count_left'][0]) - 1
+            db.updateRow(userTable,'Hit_count_left', updated_hit_count, 'UserID',user_activity.UserID)
+            db.insertRow(userActivityTable, [{"UserID":getCurrentUser.username, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
+            return {'data':'Submitted successfully','status':200}
