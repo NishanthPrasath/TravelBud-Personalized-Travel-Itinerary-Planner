@@ -54,6 +54,6 @@ class DB:
     
     def getTable(self, tableName):
         if self.tableExists(tableName):
-            return Table(tableName, self.metadata, autoload=True, autoload_with=self.engine)
+            return Table(tableName, self.metadata, autoload_with=self.engine)
         else:
             return "No such table exists"
