@@ -485,5 +485,5 @@ async def submit(user_activity: schema.user_activity, getCurrentUser: schema.Tok
         else:
             updated_hit_count = int(user['Hit_count_left'][0]) - 1
             db.updateRow(userTable,'Hit_count_left', updated_hit_count, 'UserID',user_activity.UserID)
-            db.insertRow(userActivityTable, [{"UserID":user_activity.UserID, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
+            db.insertRow(userActivityTable, [{"UserID":getCurrentUser.username, "Source": user_activity.Source, "Destination": user_activity.Destination, "S_Date": user_activity.S_Date, "E_Date": user_activity.E_Date, "Duration": user_activity.Duration, "TotalPeople": user_activity.TotalPeople, "Budget": user_activity.Budget, "Time_stamp": current_timestamp}])
             return {'data':'Submitted successfully','status':200}
