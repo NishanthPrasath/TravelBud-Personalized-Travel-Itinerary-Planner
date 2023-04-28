@@ -30,7 +30,9 @@ db = database.DB()
 @app.post('/login')
 async def login(login_data: OAuth2PasswordRequestForm = Depends()):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', login_data.username), db)
+    result = db.selectWhere(userTable, 'UserID', str(login_data.username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
@@ -39,7 +41,7 @@ async def login(login_data: OAuth2PasswordRequestForm = Depends()):
             print("password verified")
             data = {'message': 'Username verified successfully', 'status_code': '200'}
             accessToken = access_token.create_access_token(data={"sub": str(user['UserID'][0])})
-            data = {'message': "Success",'access_token':accessToken,'service_plan': user['service_plan'][0],'status_code': '200'}
+            data = {'message': "Success",'access_token':accessToken,'service_plan': user['Plan'][0],'status_code': '200'}
         else:
             data = {'message': 'Password is incorrect','status_code': '401'}
     return data
@@ -47,39 +49,43 @@ async def login(login_data: OAuth2PasswordRequestForm = Depends()):
 @app.post('/signup')
 async def signup(user_data: schema.UserData):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
-    if len(user) == 0:
-        pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        hashed_password = pwd_cxt.hash(user_data.Password)
-        db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan}])
-        data = {"message": "User created successfully", "status_code": "200"}
-        for interest in user_data.AOI:
-            db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
-    else:
+    user = db.selectWhere(userTable, 'UserID', user_data.Username)
+    for u in user:
         data = {"message": "This email already exists", "status_code": "404"}
+        return data
+    pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_cxt.hash(user_data.Password)
+    db.insertRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password, 'Name': user_data.Name, 'Plan': user_data.Plan}])
+    for interest in user_data.AOI:
+        db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
+    data = {"message": "User created successfully", "status_code": "200"}
     return data
 
 @app.post('/forgot_password')
 async def forgot_password(user_data: schema.ForgotPassword):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
         pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
         hashed_password = pwd_cxt.hash(user_data.Password)
-        db.updateRow(userTable, [{'UserID': user_data.Username, 'Password': hashed_password}])
+        db.updateRow(userTable,'Password', hashed_password, 'UserID',user_data.Username)
         data = {"message": "Password updated successfully", "status_code": "200"}
     return data
 
 @app.post('/update_User')
 async def update_User(user_data: schema.UserData):
     userTable = db.getTable('User_Details')
-    user = pd.read_sql(db.selectWhere(userTable, 'UserID', user_data.Username), db)
+    result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
     if len(user) == 0:
         data = {"message": "User not found", "status_code": "404"}
     else:
-        db.updateRow(userTable, [{'UserID': user_data.Username, 'Name': user_data.Name, 'Plan': user_data.Plan}])
+        db.updateRow(userTable, 'Plan', user_data.Plan, 'UserID', user_data.Username)
         db.deleteByValue(db.getTable('AOI'), 'UserID', user_data.Username)
         for interest in user_data.AOI:
             db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])

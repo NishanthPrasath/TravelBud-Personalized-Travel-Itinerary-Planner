@@ -10,7 +10,6 @@ class DB:
     
     def __init__(self):
         self.engine=create_engine('postgresql://'+str(os.environ.get('DB_USER_NAME'))+':'+str(os.environ.get('DB_PASSWORD'))+'@'+str(os.environ.get('DB_HOST'))+':5432/'+str(os.environ.get('DB_NAME')))
-        return self.engine
     
     def runQuery(self, query):
         with self.engine.connect() as conn:
@@ -18,23 +17,24 @@ class DB:
         return result
     
     def selectAll(self, table):
-        query = select(table)
+        query = table.select()
         return self.runQuery(query)
     
     def selectWhere(self, table, column, value):
-        query = select(table).where(column == value)
+        query = table.select().where(table.c[column]==value)
         return self.runQuery(query)
     
     def insertRow(self, table, values):
         query = table.insert().values(values)
         return self.runQuery(query)
     
-    def update(self, table, column, value, whereColumn, whereValue):
-        query = update(table).values({column: value}).where(whereColumn == whereValue)
+    def updateRow(self, table, column, value, whereColumn, whereValue):
+        query = table.update().where(table.c[whereColumn]==whereValue).values({column: value})
+        # query = update(table).values({column: value}).where(whereColumn == whereValue)
         return self.runQuery(query)
     
     def deleteByValue(self, table, column, value):
-        query = table.delete().where(column == value)
+        query = table.delete().where(table.c[column] == value)
         return self.runQuery(query)
     
     def createTable(self, table):
@@ -44,7 +44,7 @@ class DB:
         table.drop(self.engine)
 
     def tableExists(self, tableName):
-        return self.engine.dialect.has_table(self.engine, tableName)
+        return self.engine.dialect.has_table(self.engine.connect(), tableName)
     
     def getTableMetaData(self, tableName):
         return inspect(self.engine).get_columns(tableName)

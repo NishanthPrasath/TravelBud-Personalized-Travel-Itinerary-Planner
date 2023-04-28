@@ -31,8 +31,6 @@ class TokenData(BaseModel):
 
 class UserData(BaseModel):
     Username: str
-    Password: str
-    Name: str
     Plan: str
     AOI: List[str]
 
