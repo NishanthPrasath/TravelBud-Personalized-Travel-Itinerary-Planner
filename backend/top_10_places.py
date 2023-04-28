@@ -26,8 +26,11 @@ def get_top_attractions(city_name, types):
     # print names and addresses of top 10 attractions
     for attraction in attractions:
         attractions_lst.append(attraction["name"])
+    
+    # add the city name to the list
+    attractions_lst = [x + " " + city_name for x in attractions_lst]
 
     return attractions_lst
 
 
-# get_top_attractions("New York City")
+print(get_top_attractions("Florida", 'tourist_attraction|amusement_park|park|point_of_interest|establishment'))

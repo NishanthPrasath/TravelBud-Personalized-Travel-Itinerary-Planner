@@ -18,6 +18,10 @@ import json
 import requests
 from datetime import datetime, timedelta
 import pandas as pd
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, TEXT, Identity, inspect, select, update,insert
+from sqlalchemy_utils import database_exists, create_database
+import oauth2
+from typing import Union
 
 load_dotenv()
 
@@ -25,6 +29,7 @@ cwd = os.getcwd()
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI()
+    
 db = database.DB()
 
 @app.post('/login')
@@ -93,6 +98,7 @@ async def update_User(user_data: schema.UserData):
     return data
 
 def create_date_pairs(start_date, end_date, num_days):
+
     date_pairs = []
     current_date = datetime.strptime(start_date, '%Y-%m-%d')
     end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -126,7 +132,7 @@ def get_hotel_cost(checkin_date, checkout_date, adults_number, type_des, id, roo
     }
 
     headers = {
-                "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+                "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_HOTEL'),
         "X-RapidAPI-Host": "booking-com.p.rapidapi.com"
 
     }
@@ -135,8 +141,8 @@ def get_hotel_cost(checkin_date, checkout_date, adults_number, type_des, id, roo
     result = response.json()
     return result
 
-
 def calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_des, id, rooms_cnt):
+
     date_pairs = create_date_pairs(start_date, end_date, num_days)
     hotel_costs = []
     df_list = []
@@ -174,7 +180,6 @@ def calculate_hotel_costs(start_date, end_date, num_days, adults_number, type_de
 
         df = pd.concat(df_list, ignore_index=True)
         df_sorted = df.sort_values(by='price', ascending=True).reset_index(drop=True)
-
     return df_sorted
 
 
@@ -188,16 +193,16 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
     querystring = {"adults":adults_number ,"origin": origin_val,"destination": destination_val ,"departureDate": start_date,"returnDate": end_date ,"currency":"USD"}
     headers = {
         "content-type": "application/octet-stream",
-        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY'),
+        "X-RapidAPI-Key": os.environ.get('RAPID_API_KEY_AIRLINE'),
         "X-RapidAPI-Host": "skyscanner44.p.rapidapi.com"
     }
 
     response = requests.get(url, headers=headers, params=querystring).json()
 
-
+    # print(response)
 
     if 'itineraries' not in response:
-        return pd.DataFrame({'Airline': [], 'Price': [], 'Start Date': [start_date], 'End Date': [end_date]})
+        return pd.DataFrame({'Airline': [], 'Price': [], 'Start Date': [], 'End Date': []})
 
     if type_val == 'Best':
         type_val = 0
@@ -226,6 +231,7 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
 
 @app.post('/GetTopAttractions')
 async def get_top_attractions(data: schema.top_attractions):
+
     API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
 
@@ -246,11 +252,25 @@ async def get_top_attractions(data: schema.top_attractions):
     for attraction in attractions:
         attractions_lst.append(attraction["name"])
 
+    # check if the response has at least 10 attractions
+    if len(attraction["name"]) < 10:
+        
+        default_types = 'tourist_attraction|amusement_park|park|point_of_interest|establishment'
+
+        # build API request URL
+        url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={data.city}&radius={radius}&types={default_types}&key={API_KEY}"
+        # send API request and get JSON response
+        response = requests.get(url).json()
+        # get top 10 attractions by rating
+        attractions = sorted(response["results"], key=lambda x: x.get("rating", 0), reverse=True)[:10]
+        # print names and addresses of top 10 attractions
+        for attraction in attractions:
+            attractions_lst.append(attraction["name"])
+
     response_data = {'data': attractions_lst,
             'status_code': '200'}
 
     return response_data
-
 
 @app.post('/FindOptimalPairs')
 async def find_optimal_pairs(data: schema.optimal_pairs):
@@ -264,10 +284,8 @@ async def find_optimal_pairs(data: schema.optimal_pairs):
         distance = gmaps.distance_matrix(pair[0], pair[1])['rows'][0]['elements'][0]['distance']['value'] / 1000
         distances[pair] = distance
 
-    # Sort distances by value
     sorted_distances = sorted(distances.items(), key=lambda x: x[1])
 
-    # Greedy approach to find optimal pairs
     visited_locations = set()
     optimal_pairs = []
 
@@ -277,26 +295,21 @@ async def find_optimal_pairs(data: schema.optimal_pairs):
             visited_locations.add(pair[0])
             visited_locations.add(pair[1])
 
-    if len(data.locations) % 2 == 1:
-        left_out_location = set(data.locations) - visited_locations
-        if left_out_location:
-            str_data = (
-                "Optimal pairs:\n"
-                + "\n".join(
-                    [f"{pair[0]} and {pair[1]}: {distance} km" for pair, distance in optimal_pairs]
-                )
-                + f"\nLeft out location: {left_out_location.pop()}"
-            )
-    str_data = (
-        "Optimal pairs:\n"
-        + "\n".join([f"{pair[0]} and {pair[1]}: {distance} km" for pair, distance in optimal_pairs])
-    )
+    left_out_locations = set(data.locations) - visited_locations
 
-    response_data = {'data': str_data,
+    result_str = ""
+    day = 1
+    for pair, distance in optimal_pairs:
+        result_str += f"Day {day}: {pair[0]} and {pair[1]}: {distance} km\n"
+        day += 1
+
+    if left_out_locations:
+        result_str += f"Day {day}: Left out location: {' '.join(left_out_locations)}"
+
+    response_data = {'data': result_str,
             'status_code': '200'}
     
     return response_data
-
 
 @app.post('/GetFinalCost')
 async def get_final_cost(data: schema.final_cost):
@@ -309,6 +322,7 @@ async def get_final_cost(data: schema.final_cost):
     num_rooms = data.num_rooms_val #str
     df_sorted  = calculate_hotel_costs(start_date, end_date, num_days, adults_number, data.type_des, data.des_id, num_rooms)
 
+
     # get flight data
     date_pairs = create_date_pairs(start_date, end_date, num_days)
     flight_data = pd.DataFrame()
@@ -316,11 +330,24 @@ async def get_final_cost(data: schema.final_cost):
     for pair in date_pairs:
         result = get_flight_data(data.type_val, data.origin_val, data.destination_val, str(data.adults_number_val), pair[0], pair[1])
         flight_data = pd.concat([flight_data, result], ignore_index=True)
-        
+
+    # check if flight data is empty
+    if flight_data.empty:
+        # return only the hotel data
+        response_data = {'data': df_sorted.head(1),
+            'status_code': '200'}
+        return response_data
 
     flight_data = flight_data.drop_duplicates()
+    # print(flight_data)
+
+    flight_data['Price'] = [str(x).replace('$', '') for x in flight_data['Price']]
+    flight_data['Price'] = [str(x).replace(',', '') for x in flight_data['Price']]
+    flight_data['Price'] = [float(x) for x in flight_data['Price']]
+
     # convert price column to float type
-    flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
+    # flight_data['Price'] = flight_data['Price'].str.replace('$', '').astype(float)
+    # flight_data['Price'] = flight_data['Price'].str.replace(',', '').astype(float)
 
     # group by start and end dates and get the row with lowest price for each group
     flight_data = flight_data.sort_values('Price').groupby(['Start Date', 'End Date'], as_index=False).first()
@@ -353,3 +380,80 @@ async def get_final_cost(data: schema.final_cost):
     
     return response_data
     # return df_sorted
+
+
+@app.get("/get_useract_data")
+async def useract_data():
+    # config={'DB_USER_NAME':'postgres',
+    #     'DB_PASSWORD':'shubh',
+    #     'DB_ADDRESS':'localhost',
+    #     'DB_NAME':'final_project'}
+    engine=create_engine('postgresql://'+str(os.environ.get('DB_USER_NAME'))+':'+str(os.environ.get('DB_PASSWORD'))+'@'+str(os.environ.get('DB_ADDRESS'))+':5432/'+str(os.environ.get('DB_NAME')))
+    connection = engine.connect()
+    metadata = MetaData()
+    try:
+        user_data = Table('User_Details', metadata, autoload_with=engine)
+        query=select(user_data.c.UserID,user_data.c.Password,user_data.c.Name,user_data.c.Plan)
+        results = connection.execute(query).fetchall()
+        user_data=pd.DataFrame(results,columns=['UserID','Password','Name','Plan'])
+        df_user_data=user_data.to_dict(orient='records')
+        user_activity = Table('user_activity', metadata, autoload_with=engine)
+        query=select(user_activity.c.UserID,user_activity.c.Source,user_activity.c.Destination,user_activity.c.S_Date,user_activity.c.E_Date,user_activity.c.Duration,user_activity.c.Budget,user_activity.c.TotalPeople,user_activity.c.PlacesToVisit,user_activity.c.time_stamp)
+        results = connection.execute(query).fetchall()
+        user_activity=pd.DataFrame(results,columns=['UserID','Source','Destination','S_Date','E_Date','Duration','Budget','TotalPeople','PlacesToVisit','time_stamp','hit_count'])
+        df_user_activity=user_activity.to_dict(orient='records')
+        plan = Table('plan', metadata, autoload_with=engine)
+        query=select(plan.c.plan_name,plan.c.api_limit)
+        results = connection.execute(query).fetchall()
+        plan=pd.DataFrame(results,columns=['plan_name','api_limit'])
+        df_plan=plan.to_dict(orient='records')
+        aoi = Table('AOI', metadata, autoload_with=engine)
+        query=select(aoi.c.UserID,plan.c.Interest)
+        results = connection.execute(query).fetchall()
+        aoi=pd.DataFrame(results,columns=['UserID','Interest'])
+        df_aoi=plan.to_dict(orient='records')
+        return {'user_data':df_user_data,'user_activity':df_user_activity,'plan':df_plan,'aoi':df_aoi}
+    except:
+        return {'data':'No data found'}
+    
+@app.post("/get_current_username")
+async def get_username():
+    
+    # print(getCurrentUser)
+    
+    return {'username': getCurrentUser.username}
+
+@app.post('/user_api_status')
+async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    # database_file_name = "assignment_01.db"
+    # database_file_path = os.path.join(project_dir, os.path.join('data/',database_file_name))
+    # db = sqlite3.connect(database_file_path)
+    cursor = db.cursor()
+    cursor.execute('''CREATE TABLE if not exists user_activity (username,service_plan,api_limit,date,api_name,hit_count)''')
+    cursor.execute('SELECT * FROM user_activity WHERE username =? ORDER BY date DESC LIMIT 1',(getCurrentUser.username,))
+    result = cursor.fetchone()
+    username=getCurrentUser.username
+    api_limit=pd.read_sql_query('Select api_limit from Users where username="{}"'.format(username),db).api_limit.item()
+    date = datetime.utcnow()
+    service_plan=pd.read_sql_query('Select service_plan from Users where username="{}"'.format(username),db).service_plan.item()
+    api_name=api_details.api_name 
+    if not result:
+        hit_count = 1
+        cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+        db.commit()
+    else:
+        last_date = datetime.strptime(result[3], '%Y-%m-%d %H:%M:%S.%f')
+        time_diff = datetime.utcnow() - last_date
+        if time_diff <= timedelta(hours=1):
+            if result[5]<api_limit:
+                hit_count = result[5] + 1
+                cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+                db.commit()
+            else:
+                db.commit()
+                db.close() 
+                return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+        else:
+            hit_count = 1
+            cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+            db.commit()

@@ -1,2 +1,6 @@
 final_proj_env/
 .env
+
+backend/language_translation.py
+venv_fp
+backend/dashboard.py
