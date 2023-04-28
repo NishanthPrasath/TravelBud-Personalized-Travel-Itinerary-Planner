@@ -42,7 +42,7 @@ WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS WORK IN OUR ASSIGNMENT AND A
 
 Contribution:
 
-Dhanush Kumar Shankar: 25%
-Nishanth Prasath: 25%
-Shubham Goyal: 25%
-Subhash Chandran Shankarakumar: 25%
+- Dhanush Kumar Shankar: 25% 
+- Nishanth Prasath: 25%
+- Shubham Goyal: 25%
+- Subhash Chandran Shankarakumar: 25%
