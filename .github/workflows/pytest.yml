@@ -28,6 +28,6 @@ jobs:
     - name: Run pytest
       run: pytest test.py
       env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        ALGORITHM: ${{ secrets.ALGORITHM }}
-        GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+        SECRET_KEY: ${{ FINAL_PROJ_ENV.SECRET_KEY }}
+        ALGORITHM: ${{ FINAL_PROJ_ENV.ALGORITHM }}
+        GOOGLE_MAPS_API_KEY: ${{ FINAL_PROJ_ENV.GOOGLE_MAPS_API_KEY }}
