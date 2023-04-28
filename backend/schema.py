@@ -69,3 +69,35 @@ class TokenData(BaseModel):
     
 class api_detail_fetch(BaseModel):
     api_name:str
+
+class create_pdf(BaseModel):
+    num_days_val: int
+    adults_number_val: int
+    num_rooms_val: str
+    detination_name_val: str
+    type_val: str
+    origin_val: str
+    destination_val: str
+    budget_val: int
+    start_date: str
+    end_date: str
+    hotel_name: str
+    price: float
+    flight_start_date: str
+    flight_end_date: str
+    airline: str
+    flight_price: float
+    total_cost: float
+    User_name: str
+    pairing: str
+    locations: list
+    language: str
+    user_email: str
+
+class UploadFile(BaseModel):
+    file_name: str
+    file_content: bytes
+
+class GetURL(BaseModel):
+    bucket_name: str
+    key: str
