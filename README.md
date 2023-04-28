@@ -41,6 +41,9 @@ Overall, our optimization algorithms for location and booking ensure that Travel
 ### Architecture Diagram
 
 
+[Codelab Link](url)
+[Application Link](url)
+
 ### Steps to reproduce
 To run it locally please follow the steps below - 
 - clone the repo 
