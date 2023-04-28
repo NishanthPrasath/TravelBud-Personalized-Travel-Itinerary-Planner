@@ -106,3 +106,6 @@ class user_activity(BaseModel):
     Duration: int
     TotalPeople: int
     Budget: int
+
+class currentName(BaseModel):
+    Username: str

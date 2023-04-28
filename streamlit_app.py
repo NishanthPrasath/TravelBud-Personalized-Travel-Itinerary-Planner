@@ -400,12 +400,39 @@ def plan_my_trip_page():
 
                 res_optimal_pairs = find_optimal_pairs(selected_places)
 
+
+                res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
+                
+                if 'Airline' not in res["data"]:
+                    st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
+                else:                
+                    startdate = res["data"]['start_date']
+                    enddate = res["data"]['end_date']
+                    hotel_name = res["data"]['hotel_name']
+                    hotel_price = res["data"]['price']
+                    flight_airline = res["data"]['Airline']
+                    flight_price = res["data"]['Price']
+                    total_cost = res["data"]['Total_cost']
+
+                    print(res["data"])
+
+                    if total_cost > budget:
+                        st.warning(f"Uh oh! Looks like your budget is a bit tight for this trip. But don't worry, we've done our best to find the best options for you.")
+                    
+                    currentRes = requests.post('http://localhost:8000/get_current_username',headers=headers)
+                    currentUserEmail = currentRes.json()['username']
+                    resUserName = requests.post('http://localhost:8000/get_current_name',json={'Username':currentUserEmail}).json()['Name']
+
+                    User_name = resUserName
+                    user_email = currentUserEmail
+
                 if res_optimal_pairs["status_code"] == '500':
                     st.error('Could not find optimal pairs based on your selection. Please try again.')
                 else:
                     optimal_pairs = res_optimal_pairs["data"]
 
                     des_id, type_des= get_location_id(destination.split(" (")[0])
+
 
                     res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
                     

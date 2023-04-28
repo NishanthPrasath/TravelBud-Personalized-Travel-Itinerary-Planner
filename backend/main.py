@@ -436,6 +436,71 @@ async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_cur
 async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     return {'username': getCurrentUser.username}
 
+
+@app.post("/get_current_name")
+async def get_username(getCurrentName: schema.currentName):
+    userTable = db.getTable('User_Details')
+    result = db.selectWhere(userTable, 'UserID', str(getCurrentName.Username))
+    rows = [dict(row) for row in result]
+    user = pd.DataFrame(rows)
+    if len(user) == 0:
+        return {'data':'User does not exist','status':400}
+    else:
+        hitCount =  int(user['Hit_count_left'][0])
+        name = str(user['Name'][0])
+        return {'Name': name, 'Hit_count': hitCount, 'status':200}
+
+@app.post('/user_api_status')
+async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    # database_file_name = "assignment_01.db"
+    # database_file_path = os.path.join(project_dir, os.path.join('data/',database_file_name))
+    # db = sqlite3.connect(database_file_path)
+    cursor = db.cursor()
+    cursor.execute('''CREATE TABLE if not exists user_activity (username,service_plan,api_limit,date,api_name,hit_count)''')
+    cursor.execute('SELECT * FROM user_activity WHERE username =? ORDER BY date DESC LIMIT 1',(getCurrentUser.username,))
+    result = cursor.fetchone()
+    username=getCurrentUser.username
+    api_limit=pd.read_sql_query('Select api_limit from Users where username="{}"'.format(username),db).api_limit.item()
+    date = datetime.utcnow()
+    service_plan=pd.read_sql_query('Select service_plan from Users where username="{}"'.format(username),db).service_plan.item()
+    api_name=api_details.api_name 
+    if not result:
+        hit_count = 1
+        cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+        db.commit()
+    else:
+        last_date = datetime.strptime(result[3], '%Y-%m-%d %H:%M:%S.%f')
+        time_diff = datetime.utcnow() - last_date
+        if time_diff <= timedelta(hours=1):
+            if result[5]<api_limit:
+                hit_count = result[5] + 1
+                cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+                db.commit()
+            else:
+                db.commit()
+                db.close() 
+                return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+        else:
+            hit_count = 1
+            cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
+            db.commit()
+
+@app.post('/CreatePDF')
+async def create_pdf(data: schema.create_pdf):
+
+    try:
+        prompt = create_itinerary(data.User_name, data.start_date, data.end_date, data.num_days_val, data.adults_number_val, data.num_rooms_val, data.detination_name_val, data.type_val, data.origin_val, data.destination_val, data.budget_val, data.hotel_name, data.price, data.airline, data.flight_price, data.total_cost, data.locations, data.pairing)
+        message_history = []
+        gpt_response = chat(prompt, message_history)
+
+        if data.language == 'English':
+            pass
+        if data.language == "Spanish":
+            gpt_response = translate_text(gpt_response, 'Spanish')
+
+        if data.language == "Hindi":
+            gpt_response = translate_text(gpt_response, 'Hindi')
+
 # @app.post('/user_api_status')
 # async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 #     # database_file_name = "assignment_01.db"
@@ -470,6 +535,7 @@ async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_cur
 #             hit_count = 1
 #             cursor.execute('INSERT INTO user_activity VALUES (?,?,?,?,?,?)', (username,service_plan,api_limit,date,api_name,hit_count))
 #             db.commit()
+
 
 @app.post('/submit')
 async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
