@@ -1,7 +1,7 @@
 # TravelBud
 
 > [Application Link]() <br>
-> [Codelabs Documentation]([https://codelabs-preview.appspot.com/?file_id=1zG832dq7KBnSKgSkrVcLHVQBfarUR8ALQIqqGmswVhE#4](https://codelabs-preview.appspot.com/?file_id=1jhLIlc8r7w5w6xI9wYMLNCgZBmF4S3Pl0wPJ1eCel9I#0))<br>
+> [Codelabs Documentation](https://codelabs-preview.appspot.com/?file_id=1jhLIlc8r7w5w6xI9wYMLNCgZBmF4S3Pl0wPJ1eCel9I#0)<br>
 > [FastAPI Docs]() <br>
 
 ### Introduction
