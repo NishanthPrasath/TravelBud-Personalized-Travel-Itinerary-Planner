@@ -2,6 +2,7 @@ from fpdf import FPDF
 import openai
 import os
 from dotenv import load_dotenv
+from transformers import MBartForConditionalGeneration, MBart50TokenizerFast
 
 load_dotenv()
 
@@ -24,6 +25,29 @@ class MyPDF(FPDF):
 
 
 
+def translate_text(text, dest_lang):
+    if dest_lang == 'Spanish':
+        dest_lang = 'es_XX'
+    elif dest_lang == 'French':
+        dest_lang = 'fr_XX'
+    elif dest_lang == 'Hindi':
+        dest_lang = 'hi_IN'
+
+    model = MBartForConditionalGeneration.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
+    tokenizer = MBart50TokenizerFast.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
+
+    tokenizer.src_lang = "en_XX"
+    encoded_text = tokenizer(text, return_tensors="pt", max_length=1024, truncation=True)
+    generated_tokens = model.generate(
+        **encoded_text,
+        forced_bos_token_id=tokenizer.lang_code_to_id[dest_lang],
+        max_length=1024,
+        do_sample=False
+    )
+    translated_text = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
+
+    return translated_text
+  
 
 def create_itinerary(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing):
     itinerary = """Create a detailed itinerary of 500 words for a user based on the following info don't deviate from the given Info start with customised greeting based on the user name and end with terms and conditions
@@ -92,12 +116,18 @@ def chat(inp, message_history, role="user"):
     return reply_content
 
 
-def create_pdf(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing):
+def create_pdf(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing, language):
     prompt = create_itinerary(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing)
     message_history = []
     gpt_response = chat(prompt, message_history)
 
-
+    if language == "Spanish":
+        gpt_response = translate_text(gpt_response, 'Spanish')
+    if language == "French":
+        gpt_response = translate_text(gpt_response, 'French')
+    if language == "Hindi":
+        gpt_response = translate_text(gpt_response, 'Hindi')
+    
     pdf = MyPDF()
     pdf.add_page()
     text = gpt_response
@@ -136,4 +166,4 @@ Edison & Ford Winter Estates Florida"""
 
 # from the streamlit user input
 locations = ['Wild Florida Airboats & Gator Park Florida', 'Edison & Ford Winter Estates Florida', 'The John and Mable Ringling Museum of Art Florida', 'The Dalí (Salvador Dalí Museum) Florida', "Universal's Islands of Adventure Florida"]
-create_pdf(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing)
+create_pdf(User_name, start_date, end_date, num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, hotel_name, price, airline, flight_price, total_cost, locations, pairing, "French")
