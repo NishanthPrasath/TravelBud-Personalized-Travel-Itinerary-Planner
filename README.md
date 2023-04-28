@@ -39,7 +39,7 @@ In cases where the user's budget does not match their desired options, we recomm
 Overall, our optimization algorithms for location and booking ensure that Travel Bud users have the best possible vacation experience while also optimizing their time and budget.
 
 ### Architecture Diagram
-<img src="Achitecture Diagram.jpeg" alt="Architecture Diagram">
+<img src="Architecture Diagram.jpeg" alt="Architecture Diagram">
 
 
 
@@ -60,7 +60,13 @@ AWS_LOG_ACCESS_KEY =
 AWS_LOG_SECRET_KEY = 
 bucket_name= <Enter AWS Bucket Name>
 RAPID_API_KEY =
-GOOGLE_MAPS_API_KEY = 
+GOOGLE_MAPS_API_KEY =
+DB_USER_NAME=
+DB_PASSWORD= 
+DB_HOST=
+DB_NAME= 
+SECRET_KEY= <secret key generated using secrets package>
+ALGORITHM=HS256
 ```
 
 

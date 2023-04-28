@@ -46,8 +46,8 @@ def find_optimal_pairs(locations):
 
 
 locations = ['Wild Florida Airboats & Gator Park Florida', 'Edison & Ford Winter Estates Florida', 'The John and Mable Ringling Museum of Art Florida', 'The Dalí (Salvador Dalí Museum) Florida', "Universal's Islands of Adventure Florida"]
-output = find_optimal_pairs(locations)
-print(output)
+# output = find_optimal_pairs(locations)
+# print(output)
 
 
 

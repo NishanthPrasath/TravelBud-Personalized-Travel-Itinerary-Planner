@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from backend import google_maps, top_10_places
+from backend import google_maps, top_10_places, common_utils
 from dotenv import load_dotenv
 import os
 import airportsdata
@@ -68,17 +68,22 @@ def get_top_attractions(destination, interests):
 
 def find_optimal_pairs(selected_places):
 
-    data = {
-            "locations": selected_places
-        }
+    try:
+        data = {
+                "locations": selected_places
+            }
 
-    res = requests.post(
-        'http://localhost:8000/FindOptimalPairs', json=data)
-                
-    response = res.json()
+        res = requests.post(
+            'http://localhost:8000/FindOptimalPairs', json=data)
+                    
+        response = res.json()
 
-    if response["status_code"] == 200 or response["status_code"] == '200':
-        st.write(response["data"])
+        if response["status_code"] == '200':
+            return response
+        
+    except Exception as e:
+        response = {'status_code': '500'}
+        return response
 
 def get_location_id(destination):
 
@@ -95,6 +100,40 @@ def get_location_id(destination):
 
     response = response.json()
     return response[1]['dest_id'], response[1]['dest_type']
+
+def create_pdf(num_days_val, adults_number_val, num_rooms_val, detination_name_val, type_val, origin_val, destination_val, budget_val, start_date, end_date, hotel_name, price, flight_start_date, flight_end_date, airline, flight_price, total_cost, User_name, pairing, locations, language, user_email):
+
+    data = {
+            "num_days_val": num_days_val,
+            "adults_number_val": adults_number_val,
+            "num_rooms_val": num_rooms_val,
+            "detination_name_val": detination_name_val,
+            "type_val": type_val,
+            "origin_val": origin_val,
+            "destination_val": destination_val,
+            "budget_val": budget_val,
+            "start_date": start_date,
+            "end_date": end_date,
+            "hotel_name": hotel_name,
+            "price": price,
+            "flight_start_date": flight_start_date,
+            "flight_end_date": flight_end_date,
+            "airline": airline,
+            "flight_price": flight_price,
+            "total_cost": total_cost,
+            "User_name": User_name,
+            "pairing": pairing,
+            "locations": locations,
+            "language": language,
+            "user_email": user_email
+        }
+
+    res = requests.post(
+        'http://localhost:8000/CreatePDF', json=data)
+                
+    response = res.json()
+
+    return response
 
 def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val, num_rooms_val, des_id, type_des, type_val, origin_val, destination_val, budget_val):
 
@@ -119,8 +158,6 @@ def get_final_cost(start_date_val, end_date_val, num_days_val, adults_number_val
 
     if response["status_code"] == 200 or response["status_code"] == '200':
         return response
-
-
 
 # Helper function to format the selectbox options for places
 def format_select_option(pair):
@@ -344,24 +381,77 @@ def plan_my_trip_page():
         if selected_places:
             st.info("You selected: " + ", ".join(selected_places))
 
+    language = st.selectbox("Select a language", options = ['English','Spanish','Hindi'])
 
     if st.button("Submit"):
-
-        st.write("Thank you for submitting your travel requirements!")
-
-        with st.spinner('Processing'):
-            find_optimal_pairs(selected_places)
-
-            des_id, type_des= get_location_id(destination.split(" (")[0])
-
-            res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
-
-            st.write(res["data"])
-
-            dataSubmit = {"Source": source, "Destination": destination, "S_Date": start_date, "E_Date": end_date, "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
-            responseSubmit=requests.post('http://localhost:8000/submit', json=dataSubmit,headers=headers)
-            st.write(responseSubmit.json()['data'])
+        dataSubmit = {"Source": source, "Destination": destination, "S_Date": start_date, "E_Date": end_date, "Duration": num_days, "TotalPeople": num_people, "Budget": budget}
+        responseSubmit=requests.post('http://localhost:8000/submit', json=dataSubmit,headers=headers)
+        st.write(responseSubmit.json()['data'])
             
+        with st.spinner('Hold on tight, we\'re cooking up the perfect adventure for you...'):
+
+            if end_date < start_date:
+                st.error("Error: End date should be greater than the start date.")
+            elif (end_date - start_date).days < num_days:
+                st.error("Error: Number of days should be less than the duration of the trip.")
+            else:
+                for i in range(len(selected_places)):
+                    selected_places[i] += ' ' + destination.split(" (")[0]
+
+                res_optimal_pairs = find_optimal_pairs(selected_places)
+
+                if res_optimal_pairs["status_code"] == '500':
+                    st.error('Could not find optimal pairs based on your selection. Please try again.')
+                else:
+                    optimal_pairs = res_optimal_pairs["data"]
+
+                    des_id, type_des= get_location_id(destination.split(" (")[0])
+
+                    res = get_final_cost(str(start_date), str(end_date), num_days, num_people, num_rooms, des_id, type_des, type_val, source_iata, destination_iata, budget)
+                    
+                    if 'Airline' not in res["data"]:
+                        st.error("Oops, looks like we couldn't find any flights for your combination! Please try again with different dates or destinations.")
+                    else:                
+                        startdate = res["data"]['start_date']
+                        enddate = res["data"]['end_date']
+                        hotel_name = res["data"]['hotel_name']
+                        hotel_price = res["data"]['price']
+                        flight_airline = res["data"]['Airline']
+                        flight_price = res["data"]['Price']
+                        total_cost = res["data"]['Total_cost']
+
+                        print(res["data"])
+
+                        if total_cost > budget:
+                            st.warning(f"Uh oh! Looks like your budget is a bit tight for this trip. But don't worry, we've done our best to find the best options for you.")
+                        
+                        User_name = 'Nishanth Prasath'
+                        user_email = 'nishanth@gmail.com'
+
+                        create_pdf_res = create_pdf(num_days, num_people, num_rooms, destination.split(" (")[0], type_val, source_iata, destination_iata, budget, startdate, enddate, hotel_name, hotel_price, startdate, enddate, flight_airline, flight_price, total_cost, User_name, optimal_pairs, selected_places, language, user_email)
+                        
+                        file_path = os.path.join('backend', user_email + "_itinerary.pdf")
+                        file_name = user_email + '_itinerary.pdf'
+
+                        if create_pdf_res["status_code"] == '200':
+                            bucket_name = 'damg7245-team7'
+                            key = 'Travelbud/'+file_name
+                            common_utils.uploadfile(file_name, open(file_path, 'rb'))
+                            url = common_utils.get_object_url(bucket_name, key)
+                            st.success('PDF Generated Successfully')
+                            response = requests.get(url)
+                            if response.status_code == 200:
+                                with st.spinner('Downloading...'):
+                                    st.download_button(
+                                        label='Download File',
+                                        data=response.content,
+                                        file_name=User_name + ' Itinerary.pdf',
+                                        mime='application/pdf'
+                                    )
+                            else:
+                                st.error('Error downloading file. Please try again later.')
+                        else:
+                            st.error("Oops, looks like we couldn't find any travel plans matching your search criteria! Please try again with different dates or destinations.")
 
 def my_account_page():
     # Set background image

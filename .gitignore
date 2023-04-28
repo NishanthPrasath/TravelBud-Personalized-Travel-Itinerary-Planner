@@ -6,3 +6,4 @@ backend/language_translation.py
 venv_fp
 backend/dashboard.py
 backend/__pycache__/
+backend\__pycache__

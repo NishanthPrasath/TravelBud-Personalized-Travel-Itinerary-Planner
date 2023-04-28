@@ -1,4 +1,3 @@
-
 import schema
 from fastapi import FastAPI,Depends,Response,status
 import os
@@ -22,6 +21,7 @@ from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, 
 from sqlalchemy_utils import database_exists, create_database
 import oauth2
 from typing import Union
+from fastapi.responses import JSONResponse
 from datetime import datetime
 
 load_dotenv()
@@ -58,7 +58,9 @@ async def signup(user_data: schema.UserData):
     user = db.selectWhere(userTable, 'UserID', user_data.Username)
     for u in user:
         data = {"message": "This email already exists", "status_code": "404"}
-        return data
+        # return data
+        return JSONResponse(content=data, status_code=404)
+
     pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_cxt.hash(user_data.Password)
     planTable = db.getTable('plan')
@@ -69,7 +71,8 @@ async def signup(user_data: schema.UserData):
     for interest in user_data.AOI:
         db.insertRow(db.getTable('AOI'), [{'UserID': user_data.Username, 'Interest': interest}])
     data = {"message": "User created successfully", "status_code": "200"}
-    return data
+    # return data
+    return JSONResponse(content=data, status_code=200)
 
 @app.post('/forgot_password')
 async def forgot_password(user_data: schema.ForgotPassword):
