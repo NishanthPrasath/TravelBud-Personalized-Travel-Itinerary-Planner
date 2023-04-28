@@ -87,7 +87,7 @@ async def forgot_password(user_data: schema.ForgotPassword):
     return data
 
 @app.post('/update_User')
-async def update_User(user_data: schema.UpdateData):
+async def update_User(user_data: schema.UpdateData, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     userTable = db.getTable('User_Details')
     result = db.selectWhere(userTable, 'UserID', str(user_data.Username))
     rows = [dict(row) for row in result]
@@ -243,7 +243,7 @@ def get_flight_data(type_val, origin_val, destination_val, adults_number, start_
     return pd.DataFrame({'Airline': airline_lst, 'Price': price_lst, 'Start Date': [start_date]* len(price_lst), 'End Date': [end_date] * len(price_lst)})
 
 @app.post('/GetTopAttractions')
-async def get_top_attractions(data: schema.top_attractions):
+async def get_top_attractions(data: schema.top_attractions, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     attractions_lst = []
@@ -286,7 +286,7 @@ async def get_top_attractions(data: schema.top_attractions):
     return response_data
 
 @app.post('/FindOptimalPairs')
-async def find_optimal_pairs(data: schema.optimal_pairs):
+async def find_optimal_pairs(data: schema.optimal_pairs, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     gmaps = googlemaps.Client(key= os.environ.get('GOOGLE_MAPS_API_KEY'))
 
@@ -325,7 +325,7 @@ async def find_optimal_pairs(data: schema.optimal_pairs):
     return response_data
 
 @app.post('/GetFinalCost')
-async def get_final_cost(data: schema.final_cost):
+async def get_final_cost(data: schema.final_cost, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
 
     # get hotel data
     start_date = data.start_date_val #str
@@ -396,7 +396,7 @@ async def get_final_cost(data: schema.final_cost):
 
 
 @app.get("/get_useract_data")
-async def useract_data():
+async def useract_data(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     # config={'DB_USER_NAME':'postgres',
     #     'DB_PASSWORD':'shubh',
     #     'DB_ADDRESS':'localhost',
@@ -430,8 +430,8 @@ async def useract_data():
         return {'data':'No data found'}
     
 @app.post("/get_current_username")
-async def get_username():
-    return {'username': "test@gmail.com"}
+async def get_username(getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
+    return {'username': getCurrentUser.username}
 
 @app.post('/user_api_status')
 async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
@@ -469,7 +469,7 @@ async def get_user_data(api_details: schema.api_detail_fetch,getCurrentUser: sch
             db.commit()
 
 @app.post('/submit')
-async def submit(user_activity: schema.user_activity):
+async def submit(user_activity: schema.user_activity, getCurrentUser: schema.TokenData = Depends(oauth2.get_current_user)):
     userActivityTable = db.getTable('user_activity')
     
     userTable = db.getTable('User_Details')
