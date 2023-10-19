@@ -23,6 +23,11 @@ Travel Bud is an all-in-one vacation planning application designed to simplify t
 ### Architecture Diagram
 <img src="Architecture Diagram.jpeg" alt="Architecture Diagram">
 
+### Demo 
+
+[Watch the video](https://youtu.be/K9pOR9n-TbQ?si=mqgg8lBWjGLJ9HHY)
+
+
 ### Optimization 
 **Location Optimization:**
 
