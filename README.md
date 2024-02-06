@@ -6,22 +6,27 @@
 
 ### Introduction
 
-Travel Bud is an all-in-one vacation planning application designed to simplify the process of researching and booking flights, accommodations, and local attractions. The Personalized Travel Itinerary Planner creates tailored travel itineraries based on user preferences and budget constraints, making vacation planning a more efficient and enjoyable experience.
+Travel Bud is an all-in-one vacation planning application designed to simplify the process of researching and booking flights, accommodations, and local attractions. The Personalized Travel Itinerary Planner creates tailored travel itineraries based on user preferences and budget constraints, making vacation planning a more efficient and enjoyable experience. An example of the generated itinerary can be seen [here](/Goyal%20Itinerary.pdf)
 
 ### Features
 
 - Personalized recommendations based on user areas of interest
 - Ability for users to update their password and preferences
 - Rate limiting based on selected plans
-- Appliction level analytics for detailed insights into application usage
+- Application-level analytics for detailed insights into application usage
 - Top 10 list of locations based on the user's destination, along with **optimal pairing** between the locations
 - Leveraging Booking.com API and Skyscanner API to help users find suitable accommodations and flights
-- Assistance in creating an itinerary using the Chatgpt API and optimal prompting techniques
+- Assistance in creating an itinerary using the Chatgpt API and optimal prompting techniques (Custom Prompt created can be seen [here](/prompt.py))
 - Option to download itinerary in three languages (English, Spanish, and Hindi) delivered via Hugging Face models
 - Coverage of a wide demographic, making it a global application
 
 ### Architecture Diagram
 <img src="Architecture Diagram.jpeg" alt="Architecture Diagram">
+
+### Demo 
+
+[Watch the video](https://youtu.be/K9pOR9n-TbQ?si=mqgg8lBWjGLJ9HHY)
+
 
 ### Optimization 
 **Location Optimization:**
@@ -49,7 +54,7 @@ To run it locally please follow the steps below -
 - clone the repo 
 - create a virtual environment and install requirements.txt
 - subscribe to both these free tiers on Rapid API [Booking.com](https://rapidapi.com/tipsters/api/booking-com) and [Skyscanner.com](https://rapidapi.com/3b-data-3b-data-default/api/skyscanner44/)
-- create a .env file with following variables
+- create a .env file with the following variables
 ```
 OPENAI_API_KEY=
 AWS_ACCESS_KEY=
